@@ -34,7 +34,15 @@ services:
     volumes:
       - kafka_data:/bitnami/kafka
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+
 volumes:
   postgres_data:
   mongo_data:
   kafka_data:
+  redis_data:

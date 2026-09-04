@@ -22,7 +22,7 @@ class NewsRawConsumer(
     private val newsArticleRepository: NewsArticleRepository,
     private val subscriptionRepository: SubscriptionRepository,
     private val notificationRepository: NotificationRepository,
-    private val kafkaTemplate: KafkaTemplate<String, NewsRawMessage>,
+    private val kafkaTemplate: KafkaTemplate<String, Any>,
     @Value("\${app.kafka.topic.news-matched}") private val newsMatchedTopic: String,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -62,8 +62,18 @@ class NewsRawConsumer(
         }
 
         matchedSubscriptions.forEach { subscription ->
-            notificationRepository.save(Notification(subscription = subscription, newsArticle = article))
-            kafkaTemplate.send(newsMatchedTopic, article.link, message)
+            val notification = notificationRepository.save(Notification(subscription = subscription, newsArticle = article))
+            kafkaTemplate.send(
+                newsMatchedTopic,
+                article.link,
+                NewsMatchedMessage(
+                    notificationId = notification.id!!,
+                    userId = subscription.user.id!!,
+                    subscriptionKeyword = subscription.keyword,
+                    title = article.title,
+                    link = article.link,
+                ),
+            )
         }
 
         log.info("뉴스 처리 완료: {} (매칭 구독 {}건)", message.title, matchedSubscriptions.size)

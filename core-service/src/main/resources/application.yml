@@ -48,3 +48,4 @@ app:
   notification:
     channel: notifications
     heartbeat-interval-ms: ${NOTIFICATION_HEARTBEAT_INTERVAL_MS:20000}
+    digest-cron: ${NOTIFICATION_DIGEST_CRON:0 0 9 * * *}

@@ -72,6 +72,7 @@ alpha-adopter/
         ├── collector/           # NAVER 뉴스 수집 (NaverNewsClient, 스케줄러)
         ├── pipeline/            # Kafka 컨슈머, MongoDB 원본 저장, 매칭 엔진
         ├── notification/        # 실시간 알림 전달 (SSE + Redis Pub/Sub)
+        ├── subscription/        # 구독 등록/조회/삭제 REST API (인증 도입 전까지 email로 사용자 식별)
         └── config/              # Kafka 토픽 등 설정
 ```
 

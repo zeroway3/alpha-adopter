@@ -2,13 +2,15 @@
 
 > 관심 종목·키워드에 대한 뉴스를 실시간으로 감지해, AI로 중요도를 판단하고 가장 먼저 알려주는 실시간 정보 알림 플랫폼
 
+![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
+![Status](https://img.shields.io/badge/status-in%20progress-orange)
+
 🚧 **개발 진행 중 (MVP 단계)**
 
 ## 왜 만드는가
 
 정보가 넘치는 시대일수록, "내가 원하는 정보를 얼마나 빠르게 받아보는가"가 중요해지고 있습니다. AlphaAdopter는 사용자가 등록한 키워드/관심 종목과 관련된 뉴스가 발생하면, AI로 관련도를 판단해 노이즈를 걸러내고 실시간으로 알림을 전달하는 서비스입니다.
-
-이 프로젝트는 단순한 사이드 프로젝트가 아니라, 지금까지의 커리어(Node.js/NestJS 기반 백엔드)에서 다루지 못했던 기술 스택을 실제로 서비스 규모로 증명하기 위한 목적을 가지고 시작했습니다. 특히 대용량 트래픽 처리 경험을 "산정치"가 아니라 실제 배포된 인프라 위에서의 **실측치**로 확보하는 것을 핵심 목표로 삼고 있습니다.
 
 ## 핵심 기능 (MVP)
 
@@ -56,6 +58,22 @@
 | 관측성 | Prometheus, Grafana, OpenTelemetry | |
 | 부하테스트 | k6 | |
 
+## 프로젝트 구조
+
+```
+alpha-adopter/
+├── docker-compose.yml          # 로컬 개발용 PostgreSQL·MongoDB·Kafka
+├── docs/                       # 검증 결과·설계 기록
+│   ├── phase0-news-source-validation.md
+│   └── future-ideas.md
+└── core-service/                # 핵심 백엔드 서비스 (Kotlin + Spring Boot)
+    └── src/main/kotlin/com/alphaadopter/core/
+        ├── domain/              # User, Subscription, NewsArticle, Notification
+        ├── collector/           # NAVER 뉴스 수집 (NaverNewsClient, 스케줄러)
+        ├── pipeline/            # Kafka 컨슈머, MongoDB 원본 저장, 매칭 엔진
+        └── config/              # Kafka 토픽 등 설정
+```
+
 ## 로컬 개발 환경
 
 ```bash
@@ -71,7 +89,18 @@ cd core-service
 ./gradlew bootRun
 ```
 
-포트는 이 개발 환경에 이미 떠 있는 다른 프로젝트들과 겹치지 않도록 기본값 대신 PostgreSQL 5434, MongoDB 27018, Kafka 9095, 서버 8090을 사용합니다.
+포트는 이 개발 환경에 이미 떠 있는 다른 프로젝트들과 겹치지 않도록 기본값 대신 아래 포트를 사용합니다.
+
+| 서비스 | 기본 포트 대신 | 환경변수 |
+|---|---|---|
+| PostgreSQL | 5434 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` |
+| MongoDB | 27018 | `MONGODB_URI` |
+| Kafka | 9095 | `KAFKA_BOOTSTRAP_SERVERS` |
+| core-service | 8090 | `SERVER_PORT` |
+
+## 브랜치 전략
+
+`main`은 항상 정상 동작하는 상태를 유지하고, 기능 단위로 `feature/*` 브랜치를 파서 PR로 병합합니다(GitHub Flow). `main`은 브랜치 보호가 걸려 있어 PR 없이 직접 push할 수 없습니다.
 
 ## 로드맵
 
@@ -84,4 +113,4 @@ cd core-service
 
 ## 참고
 
-컨셉 검증은 이미 완료된 상태입니다. 이전에 Python 기반 프로토타입(`stock-alert`)으로 "뉴스 감지 → AI 중요도 스코어링 → 알림 전달" 흐름 자체는 동작을 확인했고, 이번 프로젝트는 그 컨셉을 Java/Kotlin·Spring·Kafka·AWS 기반으로 서비스 규모에 맞게 재설계·구현하는 것이 목표입니다.
+컨셉 검증은 이미 완료된 상태입니다. 이전에 Python 기반 프로토타입(`stock-alert`)으로 "뉴스 감지 → AI 중요도 스코어링 → 알림 전달" 흐름 자체는 동작을 확인했고, 이번 프로젝트는 그 컨셉을 Kotlin·Spring·Kafka·AWS 기반으로 서비스 규모에 맞게 재설계·구현하는 것이 목표입니다.

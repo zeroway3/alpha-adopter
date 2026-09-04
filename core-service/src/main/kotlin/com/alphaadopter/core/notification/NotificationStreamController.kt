@@ -17,8 +17,14 @@ class NotificationStreamController(
 
     @GetMapping("/api/notifications/stream/{userId}")
     fun stream(@PathVariable userId: Long): SseEmitter {
-        if (!userRepository.existsById(userId)) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다: $userId")
+        val user = userRepository.findById(userId)
+            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다: $userId") }
+
+        if (!user.isMember) {
+            throw ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "회원만 실시간 알림을 받을 수 있습니다. 비회원은 매일 아침 9시 다이제스트로 받아보실 수 있습니다.",
+            )
         }
 
         val emitter = SseEmitter(0L)

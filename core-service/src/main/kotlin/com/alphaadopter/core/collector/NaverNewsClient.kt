@@ -1,6 +1,8 @@
 package com.alphaadopter.core.collector
 
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.MediaType
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 
@@ -22,8 +24,16 @@ class NaverNewsClient(
     @Value("\${naver.client-id}") private val clientId: String,
     @Value("\${naver.client-secret}") private val clientSecret: String,
 ) {
+    // NAVER API HUB가 JSON 본문을 Content-Type: text/plain으로 내려줘서 기본 컨버터로는 파싱이 안 됨
     private val restClient = RestClient.builder()
         .baseUrl("https://naverapihub.apigw.ntruss.com")
+        .configureMessageConverters { converters ->
+            converters.withJsonConverter(
+                JacksonJsonHttpMessageConverter().apply {
+                    supportedMediaTypes = supportedMediaTypes + MediaType.TEXT_PLAIN
+                },
+            )
+        }
         .build()
 
     fun searchNews(query: String, display: Int = 10): List<NaverNewsItem> {

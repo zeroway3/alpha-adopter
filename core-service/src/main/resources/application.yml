@@ -15,6 +15,11 @@ spring:
         format_sql: true
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27018/alpha_adopter}
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -53,3 +58,4 @@ app:
     channel: notifications
     heartbeat-interval-ms: ${NOTIFICATION_HEARTBEAT_INTERVAL_MS:20000}
     digest-cron: ${NOTIFICATION_DIGEST_CRON:0 0 9 * * *}
+    digest-from-address: ${NOTIFICATION_DIGEST_FROM:no-reply@alphaadopter.local}

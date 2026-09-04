@@ -5,7 +5,7 @@
 - **비회원**: 실시간 알림 대신, 매일 아침 9시에 그때까지 쌓인 `MATCHED` 상태 알림을 사용자별로 모아 다이제스트로 발송 (`notification/DailyDigestScheduler`)
 - **회원**: 실시간으로 알림 수신 (`GET /api/notifications/stream/{userId}`, `User.isMember`가 false면 403)
 
-다이제스트 발송 채널은 아직 로그 출력뿐이고 실제 이메일/푸시 발송은 미구현. 회원 전환(결제/가입) 플로우도 없어서 `User.isMember`는 아직 DB에서 직접 바꿔야 함 — 프리미엄 전환 유인으로 쓰려면 이 두 가지가 이어서 필요.
+다이제스트는 `spring-boot-starter-mail`로 실제 이메일 발송(`POST /api/users/membership`으로 회원 전환 가능, 결제 연동은 아직 없음). 로컬은 Mailpit으로 캡처, 실제 SMTP는 `MAIL_HOST`/`MAIL_PORT`/`MAIL_USERNAME`/`MAIL_PASSWORD`로 교체. 발송 실패한 사용자의 알림은 SENT로 바뀌지 않고 다음 주기에 재시도됨. 결제 연동한 프리미엄 전환 유인은 여전히 미구현.
 
 ## 참여도 기반 개인화 필터링 (2026-09-04 논의)
 

@@ -56,10 +56,21 @@
 | 관측성 | Prometheus, Grafana, OpenTelemetry | |
 | 부하테스트 | k6 | |
 
+## 로컬 개발 환경
+
+```bash
+# 1. 로컬 PostgreSQL 실행
+docker compose up -d
+
+# 2. core-service 실행
+cd core-service
+./gradlew bootRun
+```
+
 ## 로드맵
 
-- [ ] 0단계 — 뉴스 데이터 소스 검증, MVP 스코프 확정
-- [ ] 1단계 — 핵심 도메인 설계 (Spring Boot + JPA, 로컬 PostgreSQL)
+- [x] 0단계 — 뉴스 데이터 소스 검증, MVP 스코프 확정 ([검증 결과](docs/phase0-news-source-validation.md))
+- [ ] 1단계 — 핵심 도메인 설계 (Spring Boot + JPA, 로컬 PostgreSQL) — 프로젝트 스캐폴딩 완료, 도메인 모델링 진행 중
 - [ ] 2단계 — 뉴스 수집 파이프라인 (Kafka + MongoDB + 매칭 엔진)
 - [ ] 3단계 — 실시간 알림 전달 (SSE/WebSocket + Redis)
 - [ ] 4단계 — AWS 인프라 전환 (RDS, ElastiCache, EKS, Terraform)

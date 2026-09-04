@@ -59,19 +59,25 @@
 ## 로컬 개발 환경
 
 ```bash
-# 1. 로컬 PostgreSQL 실행
+# 1. 로컬 PostgreSQL·MongoDB·Kafka 실행
 docker compose up -d
 
-# 2. core-service 실행
+# 2. NAVER API HUB 인증정보 등록 (Client ID/Secret은 콘솔에서 발급)
+export NAVER_CLIENT_ID=발급받은_CLIENT_ID
+export NAVER_CLIENT_SECRET=발급받은_CLIENT_SECRET
+
+# 3. core-service 실행
 cd core-service
 ./gradlew bootRun
 ```
+
+포트는 이 개발 환경에 이미 떠 있는 다른 프로젝트들과 겹치지 않도록 기본값 대신 PostgreSQL 5434, MongoDB 27018, Kafka 9095, 서버 8090을 사용합니다.
 
 ## 로드맵
 
 - [x] 0단계 — 뉴스 데이터 소스 검증, MVP 스코프 확정 ([검증 결과](docs/phase0-news-source-validation.md))
 - [x] 1단계 — 핵심 도메인 설계 (Spring Boot + JPA, 로컬 PostgreSQL) — User/Subscription/NewsArticle/Notification 엔티티 설계 완료
-- [ ] 2단계 — 뉴스 수집 파이프라인 (Kafka + MongoDB + 매칭 엔진)
+- [x] 2단계 — 뉴스 수집 파이프라인 (Kafka + MongoDB + 매칭 엔진) — 스케줄러 수집 → news.raw → MongoDB 원본 저장 → 구독 매칭 → news.matched 발행까지 구현
 - [ ] 3단계 — 실시간 알림 전달 (SSE/WebSocket + Redis)
 - [ ] 4단계 — AWS 인프라 전환 (RDS, ElastiCache, EKS, Terraform)
 - [ ] 5단계 — 실측 부하테스트 및 관측성 구축

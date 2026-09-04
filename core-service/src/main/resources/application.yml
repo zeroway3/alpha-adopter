@@ -13,9 +13,9 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27018/alpha_adopter}
   data:
-    mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27018/alpha_adopter}
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6380}

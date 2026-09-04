@@ -44,4 +44,8 @@ class Notification(
     var createdAt: Instant = Instant.now()
 
     var sentAt: Instant? = null
+
+    // 참여도 추적용 (docs/future-ideas.md 개인화 필터링 아이디어 참고). 스코어링/필터링 로직은 아직 없고 데이터만 쌓는다.
+    var readAt: Instant? = null
+    var clickedAt: Instant? = null
 }

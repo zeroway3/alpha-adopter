@@ -44,6 +44,8 @@ naver:
   client-secret: ${NAVER_CLIENT_SECRET:}
 
 app:
+  # 다이제스트 이메일의 클릭 추적 리다이렉트 링크를 만들 때 사용. 배포 환경에서는 실제 공개 도메인으로 교체
+  base-url: ${APP_BASE_URL:http://localhost:8090}
   kafka:
     topic:
       news-raw: news.raw

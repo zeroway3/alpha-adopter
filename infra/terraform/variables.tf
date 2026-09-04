@@ -39,3 +39,27 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "cluster_name" {
+  description = "EKS 클러스터 이름"
+  type        = string
+  default     = "alphaadopter"
+}
+
+variable "kubernetes_version" {
+  description = "EKS Kubernetes 버전"
+  type        = string
+  default     = "1.31"
+}
+
+variable "node_instance_type" {
+  description = "워커 노드 EC2 인스턴스 타입 (프리티어 계정이라 free-tier-eligible 타입만 사용 가능)"
+  type        = string
+  default     = "t3.small"
+}
+
+variable "node_desired_size" {
+  description = "워커 노드 기본 개수"
+  type        = number
+  default     = 2
+}

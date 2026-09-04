@@ -16,6 +16,9 @@ spring:
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27018/alpha_adopter}
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9095}
     producer:
@@ -42,3 +45,6 @@ app:
       news-matched: news.matched
   collector:
     fixed-delay-ms: ${COLLECTOR_INTERVAL_MS:60000}
+  notification:
+    channel: notifications
+    heartbeat-interval-ms: ${NOTIFICATION_HEARTBEAT_INTERVAL_MS:20000}

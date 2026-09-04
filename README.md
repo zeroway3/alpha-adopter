@@ -71,6 +71,7 @@ alpha-adopter/
         ├── domain/              # User, Subscription, NewsArticle, Notification
         ├── collector/           # NAVER 뉴스 수집 (NaverNewsClient, 스케줄러)
         ├── pipeline/            # Kafka 컨슈머, MongoDB 원본 저장, 매칭 엔진
+        ├── notification/        # 실시간 알림 전달 (SSE + Redis Pub/Sub)
         └── config/              # Kafka 토픽 등 설정
 ```
 
@@ -96,6 +97,7 @@ cd core-service
 | PostgreSQL | 5434 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` |
 | MongoDB | 27018 | `MONGODB_URI` |
 | Kafka | 9095 | `KAFKA_BOOTSTRAP_SERVERS` |
+| Redis | 6380 | `REDIS_HOST`, `REDIS_PORT` |
 | core-service | 8090 | `SERVER_PORT` |
 
 ## 브랜치 전략
@@ -107,7 +109,7 @@ cd core-service
 - [x] 0단계 — 뉴스 데이터 소스 검증, MVP 스코프 확정 ([검증 결과](docs/phase0-news-source-validation.md))
 - [x] 1단계 — 핵심 도메인 설계 (Spring Boot + JPA, 로컬 PostgreSQL) — User/Subscription/NewsArticle/Notification 엔티티 설계 완료
 - [x] 2단계 — 뉴스 수집 파이프라인 (Kafka + MongoDB + 매칭 엔진) — 스케줄러 수집 → news.raw → MongoDB 원본 저장 → 구독 매칭 → news.matched 발행까지 구현
-- [ ] 3단계 — 실시간 알림 전달 (SSE/WebSocket + Redis)
+- [x] 3단계 — 실시간 알림 전달 (SSE/WebSocket + Redis) — news.matched 컨슈머 → Redis Pub/Sub → 인스턴스별 SSE 커넥션으로 전달, 하트비트로 유휴 커넥션 방지
 - [ ] 4단계 — AWS 인프라 전환 (RDS, ElastiCache, EKS, Terraform)
 - [ ] 5단계 — 실측 부하테스트 및 관측성 구축
 

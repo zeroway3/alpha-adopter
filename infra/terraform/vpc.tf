@@ -24,8 +24,10 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "alphaadopter-public-${var.availability_zones[count.index]}"
-    Tier = "public"
+    Name                                        = "alphaadopter-public-${var.availability_zones[count.index]}"
+    Tier                                        = "public"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    "kubernetes.io/role/elb"                    = "1"
   }
 }
 
@@ -36,8 +38,10 @@ resource "aws_subnet" "private" {
   availability_zone = var.availability_zones[count.index]
 
   tags = {
-    Name = "alphaadopter-private-${var.availability_zones[count.index]}"
-    Tier = "private"
+    Name                                        = "alphaadopter-private-${var.availability_zones[count.index]}"
+    Tier                                        = "private"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    "kubernetes.io/role/internal-elb"           = "1"
   }
 }
 
@@ -60,10 +64,34 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# private 서브넷은 지금은 NAT 없이 격리 상태로 둔다 (비용 절감).
-# EKS 워커 노드가 붙는 다음 단계에서 아웃바운드 인터넷이 실제로 필요해지면 그때 NAT Gateway를 추가한다.
+# EKS 워커 노드가 컨테이너 이미지를 받고 AWS API에 접근하려면 아웃바운드 인터넷이 필요해서
+# 여기서 NAT Gateway를 추가한다. 비용 절감을 위해 가용영역당 1개가 아니라 전체 1개만 둔다.
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = {
+    Name = "alphaadopter-nat-eip"
+  }
+}
+
+resource "aws_nat_gateway" "main" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
+
+  tags = {
+    Name = "alphaadopter-nat"
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.main.id
+  }
 
   tags = {
     Name = "alphaadopter-private-rt"

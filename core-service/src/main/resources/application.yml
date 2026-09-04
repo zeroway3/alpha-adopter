@@ -45,6 +45,10 @@ app:
       news-matched: news.matched
   collector:
     fixed-delay-ms: ${COLLECTOR_INTERVAL_MS:60000}
+  subscription:
+    # NAVER API HUB 월 할당량(775,000회) 보호용. 고유 키워드 하나당 collector.fixed-delay-ms 간격으로
+    # 계속 호출되므로, 기본 60초 간격 기준 775000 / (1440회/일 * 30일) ≈ 17.9개가 이론상 한계 — 여유를 두고 15로 제한
+    max-distinct-keywords: ${SUBSCRIPTION_MAX_DISTINCT_KEYWORDS:15}
   notification:
     channel: notifications
     heartbeat-interval-ms: ${NOTIFICATION_HEARTBEAT_INTERVAL_MS:20000}

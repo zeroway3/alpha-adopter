@@ -2,7 +2,7 @@ spring:
   application:
     name: core-service
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:alpha_adopter}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5434}/${DB_NAME:alpha_adopter}
     username: ${DB_USERNAME:alpha_adopter}
     password: ${DB_PASSWORD:alpha_adopter}
   jpa:
@@ -15,4 +15,4 @@ spring:
         format_sql: true
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${SERVER_PORT:8090}

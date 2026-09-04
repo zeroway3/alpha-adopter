@@ -41,6 +41,13 @@ services:
     volumes:
       - redis_data:/data
 
+  # 로컬 개발/테스트용 SMTP 서버. 실제 메일함으로 발송하지 않고 http://localhost:8025 웹 UI에서 확인
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
 volumes:
   postgres_data:
   mongo_data:

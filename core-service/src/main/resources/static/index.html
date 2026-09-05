@@ -28,16 +28,16 @@
         <p class="tagline">관심 키워드·종목 뉴스를 실시간으로 감지해 가장 먼저 알려드립니다.</p>
         <div class="auth-feature-list">
           <div class="auth-feature">
-            <span class="emoji">📰</span>
+            <span class="auth-feature-icon" data-icon="newspaper"></span>
             <div><div class="title">실시간 뉴스 감지</div><div class="desc">키워드 매칭 + AI 관련도 필터링 기반 자동 수집·알림</div></div>
           </div>
           <div class="auth-feature">
-            <span class="emoji">⚡</span>
-            <div><div class="title">SSE 실시간 알림</div><div class="desc">접속 중이면 즉시, 아니면 일일 다이제스트</div></div>
+            <span class="auth-feature-icon" data-icon="zap"></span>
+            <div><div class="title">즉시 알림 전송</div><div class="desc">접속 중이면 즉시, 아니면 일일 다이제스트</div></div>
           </div>
           <div class="auth-feature">
-            <span class="emoji">📊</span>
-            <div><div class="title">관리자 모니터링</div><div class="desc">전체 사용자·구독·알림 현황을 한눈에</div></div>
+            <span class="auth-feature-icon" data-icon="barChart"></span>
+            <div><div class="title">운영 대시보드</div><div class="desc">전체 사용자·구독·알림 현황을 한눈에</div></div>
           </div>
         </div>
       </div>
@@ -65,14 +65,14 @@
           <div class="field-group">
             <label class="field-label">이메일</label>
             <div class="field-input-wrap">
-              <span class="icon">✉️</span>
+              <span class="icon" data-icon="mail"></span>
               <input type="email" class="field-input" id="login-email" placeholder="you@example.com" required />
             </div>
           </div>
           <div class="field-group">
             <label class="field-label">비밀번호</label>
             <div class="field-input-wrap">
-              <span class="icon">🔒</span>
+              <span class="icon" data-icon="lock"></span>
               <input type="password" class="field-input" id="login-password" placeholder="비밀번호" required />
             </div>
           </div>
@@ -83,21 +83,19 @@
           <div class="field-group">
             <label class="field-label">이메일</label>
             <div class="field-input-wrap">
-              <span class="icon">✉️</span>
+              <span class="icon" data-icon="mail"></span>
               <input type="email" class="field-input" id="signup-email" placeholder="you@example.com" required />
             </div>
           </div>
           <div class="field-group">
             <label class="field-label">비밀번호</label>
             <div class="field-input-wrap">
-              <span class="icon">🔒</span>
+              <span class="icon" data-icon="lock"></span>
               <input type="password" class="field-input" id="signup-password" placeholder="8자 이상" minlength="8" required />
             </div>
           </div>
           <button type="submit" class="btn btn-primary btn-full">회원가입</button>
         </form>
-
-        <p class="auth-footer-note">인증 시스템 데모 — 실제 서비스가 아닙니다</p>
       </div>
     </div>
   </section>
@@ -125,13 +123,13 @@
         </div>
 
         <nav class="sidebar-nav">
-          <div class="sidebar-nav-label">메뉴</div>
+          <div id="nav-menu-label" class="sidebar-nav-label" hidden>메뉴</div>
           <div id="view-toggle" hidden>
             <button type="button" data-view="user" class="sidebar-nav-item active">
-              <span class="icon">🏠</span> 내 화면
+              <span class="icon" data-icon="home"></span> 내 화면
             </button>
             <button type="button" data-view="admin" class="sidebar-nav-item">
-              <span class="icon">📊</span> 관리자
+              <span class="icon" data-icon="grid"></span> 관리자
             </button>
           </div>
         </nav>
@@ -156,7 +154,7 @@
         <main id="user-content" class="content">
           <section class="card">
             <div class="card-header">
-              <span class="card-icon tint-blue">🔎</span>
+              <span class="card-icon tint-blue" data-icon="search"></span>
               <div>
                 <div class="card-title">키워드/종목 구독</div>
                 <div class="card-subtitle">관심 있는 키워드를 등록하면 뉴스가 뜰 때 알려드려요</div>
@@ -178,7 +176,7 @@
 
           <section class="card">
             <div class="card-header">
-              <span class="card-icon tint-emerald">⚡</span>
+              <span class="card-icon tint-emerald" data-icon="zap"></span>
               <div>
                 <div class="card-title">실시간 알림</div>
                 <div class="card-subtitle">
@@ -195,7 +193,7 @@
           <section class="card">
             <div class="card-header" style="justify-content:space-between;">
               <div style="display:flex; align-items:center; gap:0.75rem;">
-                <span class="card-icon tint-violet">🕘</span>
+                <span class="card-icon tint-violet" data-icon="clock"></span>
                 <div class="card-title">알림 히스토리</div>
               </div>
               <button id="refresh-history-btn" class="btn btn-outline btn-sm">새로고침</button>
@@ -229,22 +227,19 @@
 
           <section class="card">
             <div class="card-header">
-              <span class="card-icon tint-cyan">📈</span>
+              <span class="card-icon tint-cyan" data-icon="trendingUp"></span>
               <div>
                 <div class="card-title">최근 7일 알림 발생 추이</div>
                 <div class="card-subtitle">일자별 매칭·발송된 알림 총량</div>
               </div>
             </div>
             <div id="daily-chart" class="chart-wrap"></div>
-            <p class="grafana-note">
-              상세 시계열 메트릭(CPU/메모리/처리량)은 Grafana에서 확인 — 비용/보안상 공개 노출하지 않고
-              <code>kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80</code> 으로 접근합니다.
-            </p>
+            <p class="ops-note">상세 인프라 메트릭(CPU·메모리·처리량)은 별도 모니터링 대시보드에서 제공되며, 보안을 위해 외부에는 공개하지 않습니다.</p>
           </section>
 
           <section class="card">
             <div class="card-header">
-              <span class="card-icon tint-amber">🏷️</span>
+              <span class="card-icon tint-amber" data-icon="tag"></span>
               <div class="card-title">인기 키워드 TOP 10</div>
             </div>
             <div class="table-card">
@@ -259,7 +254,7 @@
 
           <section class="card">
             <div class="card-header">
-              <span class="card-icon tint-violet">👥</span>
+              <span class="card-icon tint-violet" data-icon="users"></span>
               <div class="card-title">전체 사용자</div>
             </div>
             <div class="table-card">
@@ -274,7 +269,7 @@
 
           <section class="card">
             <div class="card-header">
-              <span class="card-icon tint-rose">🔔</span>
+              <span class="card-icon tint-rose" data-icon="bell"></span>
               <div class="card-title">전체 최근 알림</div>
             </div>
             <div class="table-card">

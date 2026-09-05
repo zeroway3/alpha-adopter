@@ -38,3 +38,8 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+### 프론트엔드(React/Vite) 빌드 산출물 ###
+# frontend/의 `npm run build`가 여기로 직접 출력한다(vite.config.ts outDir 참고).
+# 빌드 시점(로컬 npm run build 또는 Dockerfile의 멀티스테이지 빌드)마다 새로 생성되므로 커밋하지 않는다.
+src/main/resources/static/*

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AlphaAdopter</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>AlphaAdopter</h1>
+    <div id="user-info" class="user-info" hidden>
+      <span id="user-email"></span>
+      <span id="admin-badge" class="badge" hidden>관리자</span>
+      <button id="logout-btn">로그아웃</button>
+    </div>
+  </header>
+
+  <main id="login-view" class="card">
+    <h2>로그인</h2>
+    <p class="muted">이메일만 입력하면 됩니다 (비밀번호 없음, 인증 시스템은 아직 없는 데모 단계).</p>
+    <form id="login-form">
+      <input type="email" id="login-email" placeholder="you@example.com" required />
+      <button type="submit">시작하기</button>
+    </form>
+    <p id="login-error" class="error" hidden></p>
+  </main>
+
+  <main id="app-view" hidden>
+    <section class="card">
+      <h2>키워드/종목 구독</h2>
+      <form id="subscribe-form">
+        <input type="text" id="subscribe-keyword" placeholder="예: 삼성전자" required />
+        <select id="subscribe-type">
+          <option value="KEYWORD">키워드</option>
+          <option value="STOCK_CODE">종목코드</option>
+        </select>
+        <button type="submit">구독</button>
+      </form>
+      <p id="subscribe-error" class="error" hidden></p>
+      <ul id="subscription-list" class="list"></ul>
+    </section>
+
+    <section class="card">
+      <h2>실시간 알림 <span id="sse-status" class="status">연결 중...</span></h2>
+      <ul id="live-feed" class="list feed"></ul>
+    </section>
+
+    <section class="card">
+      <h2>알림 히스토리</h2>
+      <button id="refresh-history-btn">새로고침</button>
+      <table class="table">
+        <thead>
+          <tr><th>키워드</th><th>기사</th><th>상태</th><th>수신</th><th>읽음</th><th>클릭</th></tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </section>
+
+    <section id="admin-section" class="card" hidden>
+      <h2>관리자 통계</h2>
+      <button id="refresh-stats-btn">새로고침</button>
+      <div id="stats-grid" class="stats-grid"></div>
+      <h3>전체 최근 알림</h3>
+      <table class="table">
+        <thead>
+          <tr><th>사용자</th><th>키워드</th><th>기사</th><th>상태</th><th>발생 시각</th></tr>
+        </thead>
+        <tbody id="admin-recent-body"></tbody>
+      </table>
+      <p class="muted">
+        상세 시계열 메트릭(CPU/메모리/처리량 등)은 Grafana에서 확인합니다 —
+        비용/보안상 공개 노출하지 않고 <code>kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80</code>
+        으로만 접근합니다.
+      </p>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

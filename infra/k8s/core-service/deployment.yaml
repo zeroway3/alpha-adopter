@@ -52,6 +52,11 @@ spec:
                 secretKeyRef:
                   name: core-service-secrets
                   key: ADMIN_EMAILS
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: core-service-secrets
+                  key: JWT_SECRET
           resources:
             requests:
               cpu: 250m

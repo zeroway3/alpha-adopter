@@ -1,5 +1,6 @@
 package com.alphaadopter.core.subscription
 
+import com.alphaadopter.core.auth.AuthPrincipal
 import com.alphaadopter.core.domain.subscription.Subscription
 import com.alphaadopter.core.domain.subscription.SubscriptionRepository
 import com.alphaadopter.core.domain.subscription.SubscriptionType
@@ -29,6 +30,11 @@ class SubscriptionKeywordCapTest {
     @Autowired
     lateinit var subscriptionRepository: SubscriptionRepository
 
+    private fun principalFor(email: String): AuthPrincipal {
+        val user = userRepository.save(User(email = email, isMember = true))
+        return AuthPrincipal(userId = user.id!!, email = user.email)
+    }
+
     @Test
     @Transactional
     fun `한도에 도달해도 이미 존재하는 키워드에는 합류할 수 있다`() {
@@ -37,7 +43,8 @@ class SubscriptionKeywordCapTest {
         subscriptionRepository.save(Subscription(user = seedUser, keyword = existingKeyword, type = SubscriptionType.KEYWORD))
 
         val response = subscriptionController.create(
-            SubscriptionCreateRequest(email = "joiner-${System.nanoTime()}@example.com", keyword = existingKeyword, type = SubscriptionType.KEYWORD),
+            SubscriptionCreateRequest(keyword = existingKeyword, type = SubscriptionType.KEYWORD),
+            principalFor("joiner-${System.nanoTime()}@example.com"),
         )
 
         assertEquals(HttpStatus.CREATED, response.statusCode)
@@ -50,7 +57,8 @@ class SubscriptionKeywordCapTest {
 
         val exception = assertFailsWith<ResponseStatusException> {
             subscriptionController.create(
-                SubscriptionCreateRequest(email = "blocked-${System.nanoTime()}@example.com", keyword = brandNewKeyword, type = SubscriptionType.KEYWORD),
+                SubscriptionCreateRequest(keyword = brandNewKeyword, type = SubscriptionType.KEYWORD),
+                principalFor("blocked-${System.nanoTime()}@example.com"),
             )
         }
 

@@ -1,5 +1,5 @@
-// 인증 시스템이 없는 데모 단계라, "로그인"은 이메일을 서버에 등록/회원 전환하고
-// 그 결과(userId, isAdmin)를 localStorage에 저장하는 것으로 대신한다.
+// 이메일+비밀번호 인증(JWT). 서버가 내려준 토큰을 localStorage에 저장하고,
+// 이후 모든 API 호출에 Authorization: Bearer 헤더로 실어 보낸다.
 
 const SESSION_KEY = "alphaadopter_session";
 
@@ -20,6 +20,8 @@ function clearSession() {
 }
 
 let eventSource = null;
+let adminClockTimer = null;
+let serverStatusTimer = null;
 
 function formatTime(iso) {
   if (!iso) return "-";
@@ -38,35 +40,66 @@ function el(tag, { text, className, children } = {}) {
 
 function linkEl(href, text) {
   const a = el("a", { text });
-  // href도 사용자가 통제하지 못하는 값(NAVER API 기사 링크)이지만, 혹시 모를
-  // javascript: 스킴 주입을 막기 위해 http(s)만 허용한다.
   a.href = /^https?:\/\//i.test(href) ? href : "#";
   a.target = "_blank";
   a.rel = "noopener";
   return a;
 }
 
-async function login(email) {
-  const res = await fetch("/api/users/membership", {
+function statusTag(status) {
+  const map = { MATCHED: "matched", SENT: "sent", FAILED: "failed" };
+  return el("span", { className: "tag-pill " + (map[status] || ""), text: status });
+}
+
+async function authFetch(path, options = {}) {
+  const session = getSession();
+  const headers = Object.assign({}, options.headers || {});
+  if (session) headers["Authorization"] = "Bearer " + session.token;
+
+  const res = await fetch(path, { ...options, headers });
+  if (res.status === 401) {
+    clearSession();
+    showAuth();
+    throw new Error("세션이 만료되었습니다. 다시 로그인해주세요.");
+  }
+  return res;
+}
+
+async function signup(email, password) {
+  const res = await fetch("/api/auth/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, password }),
   });
-  if (!res.ok) throw new Error("로그인 실패 (" + res.status + ")");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || body.message || "회원가입 실패 (" + res.status + ")");
+  }
   return res.json();
 }
 
-async function loadSubscriptions(email) {
-  const res = await fetch("/api/subscriptions?email=" + encodeURIComponent(email));
-  if (!res.ok) throw new Error("구독 목록 조회 실패");
-  return res.json();
-}
-
-async function createSubscription(email, keyword, type) {
-  const res = await fetch("/api/subscriptions", {
+async function login(email, password) {
+  const res = await fetch("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, keyword, type }),
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || body.message || "로그인 실패 (" + res.status + ")");
+  }
+  return res.json();
+}
+
+async function loadSubscriptions() {
+  return (await authFetch("/api/subscriptions")).json();
+}
+
+async function createSubscription(keyword, type) {
+  const res = await authFetch("/api/subscriptions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ keyword, type }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -75,43 +108,51 @@ async function createSubscription(email, keyword, type) {
   return res.json();
 }
 
-async function deleteSubscription(id, email) {
-  const res = await fetch("/api/subscriptions/" + id + "?email=" + encodeURIComponent(email), {
-    method: "DELETE",
-  });
+async function deleteSubscription(id) {
+  const res = await authFetch("/api/subscriptions/" + id, { method: "DELETE" });
   if (!res.ok && res.status !== 204) throw new Error("구독 해제 실패");
 }
 
-async function loadHistory(email) {
-  const res = await fetch("/api/notifications?email=" + encodeURIComponent(email));
-  if (!res.ok) throw new Error("알림 히스토리 조회 실패");
-  return res.json();
+async function loadHistory() {
+  return (await authFetch("/api/notifications")).json();
 }
 
-async function loadAdminStats(email) {
-  const res = await fetch("/api/admin/stats?email=" + encodeURIComponent(email));
+async function loadAdminStats() {
+  const res = await authFetch("/api/admin/stats");
   if (!res.ok) throw new Error("관리자 통계 조회 실패 (" + res.status + ")");
   return res.json();
 }
 
-function renderSubscriptions(subs, email) {
+async function loadAdminUsers() {
+  return (await authFetch("/api/admin/users")).json();
+}
+
+async function loadAdminKeywords() {
+  return (await authFetch("/api/admin/keywords")).json();
+}
+
+async function loadAdminDaily() {
+  return (await authFetch("/api/admin/stats/daily")).json();
+}
+
+/* ---------------- 렌더링 ---------------- */
+
+function renderSubscriptions(subs) {
   const list = document.getElementById("subscription-list");
   list.innerHTML = "";
   if (subs.length === 0) {
-    list.innerHTML = '<li class="muted">아직 구독한 키워드가 없습니다.</li>';
+    list.appendChild(el("li", { className: "empty-note", text: "아직 구독한 키워드가 없습니다." }));
     return;
   }
   subs.forEach((s) => {
-    const deleteBtn = el("button", { text: "해제" });
-    deleteBtn.addEventListener("click", async () => {
-      await deleteSubscription(s.id, email);
-      const fresh = await loadSubscriptions(email);
-      renderSubscriptions(fresh, email);
+    const removeBtn = el("button", { className: "remove-btn", text: "해제" });
+    removeBtn.addEventListener("click", async () => {
+      await deleteSubscription(s.id);
+      renderSubscriptions(await loadSubscriptions());
     });
-    const li = el("li", {
-      children: [el("span", { text: s.keyword + " (" + s.type + ")" }), deleteBtn],
-    });
-    list.appendChild(li);
+    list.appendChild(
+      el("li", { children: [el("span", { text: s.keyword + " (" + s.type + ")" }), removeBtn] }),
+    );
   });
 }
 
@@ -119,152 +160,290 @@ function renderHistory(items) {
   const body = document.getElementById("history-body");
   body.innerHTML = "";
   if (items.length === 0) {
-    body.innerHTML = '<tr><td colspan="6" class="muted">아직 받은 알림이 없습니다.</td></tr>';
+    body.appendChild(el("tr", { children: [el("td", { text: "아직 받은 알림이 없습니다.", className: "empty-note" })] }));
     return;
   }
   items.forEach((n) => {
-    const tr = el("tr", {
-      children: [
-        el("td", { text: n.keyword }),
-        el("td", { children: [linkEl(n.articleLink, n.articleTitle)] }),
-        el("td", { text: n.status }),
-        el("td", { text: formatTime(n.createdAt) }),
-        el("td", { text: formatTime(n.readAt) }),
-        el("td", { text: formatTime(n.clickedAt) }),
-      ],
-    });
-    body.appendChild(tr);
-  });
-}
-
-function renderAdminStats(stats) {
-  const grid = document.getElementById("stats-grid");
-  const boxes = [
-    ["전체 사용자", stats.totalUsers],
-    ["전체 구독", stats.totalSubscriptions],
-    ["수집된 뉴스", stats.totalNewsArticles],
-    ["매칭됨", stats.notificationsMatched],
-    ["전송됨", stats.notificationsSent],
-    ["실패", stats.notificationsFailed],
-    ["읽음", stats.notificationsRead],
-    ["클릭됨", stats.notificationsClicked],
-  ];
-  grid.innerHTML = "";
-  boxes.forEach(([label, value]) => {
-    grid.appendChild(
-      el("div", {
-        className: "stat-box",
-        children: [el("div", { className: "value", text: String(value) }), el("div", { className: "label", text: label })],
+    body.appendChild(
+      el("tr", {
+        children: [
+          el("td", { text: n.keyword }),
+          el("td", { children: [linkEl(n.articleLink, n.articleTitle)] }),
+          el("td", { children: [statusTag(n.status)] }),
+          el("td", { text: formatTime(n.createdAt) }),
+          el("td", { text: formatTime(n.readAt) }),
+          el("td", { text: formatTime(n.clickedAt) }),
+        ],
       }),
     );
-  });
-
-  const body = document.getElementById("admin-recent-body");
-  body.innerHTML = "";
-  stats.recentNotifications.forEach((n) => {
-    const tr = el("tr", {
-      children: [
-        el("td", { text: n.userEmail }),
-        el("td", { text: n.keyword }),
-        el("td", { text: n.articleTitle }),
-        el("td", { text: n.status }),
-        el("td", { text: formatTime(n.createdAt) }),
-      ],
-    });
-    body.appendChild(tr);
   });
 }
 
 function prependLiveNotification(matched) {
   const feed = document.getElementById("live-feed");
-  const meta = el("span", {
-    className: "muted",
-    text: "키워드: " + matched.subscriptionKeyword + " · " + new Date().toLocaleTimeString("ko-KR"),
-  });
-  const li = el("li", { children: [linkEl(matched.link, matched.title), meta] });
-  li.addEventListener(
-    "click",
-    () => fetch("/api/notifications/" + matched.notificationId + "/read", { method: "POST" }),
-    { once: true },
-  );
+  const meta = el("span", { className: "meta", text: "키워드: " + matched.subscriptionKeyword + " · " + new Date().toLocaleTimeString("ko-KR") });
+  const li = el("li", { className: "feed-item", children: [linkEl(matched.link, matched.title), meta] });
+  li.addEventListener("click", () => authFetch("/api/notifications/" + matched.notificationId + "/read", { method: "POST" }), { once: true });
   feed.prepend(li);
 }
 
-function connectSse(userId) {
+function connectSse(token) {
   if (eventSource) eventSource.close();
   const statusEl = document.getElementById("sse-status");
-  eventSource = new EventSource("/api/notifications/stream/" + userId);
+  const dot = statusEl.querySelector(".status-dot");
+  eventSource = new EventSource("/api/notifications/stream?token=" + encodeURIComponent(token));
   eventSource.onopen = () => {
-    statusEl.textContent = "연결됨";
-    statusEl.className = "status up";
+    statusEl.lastChild.textContent = "연결됨";
+    dot.className = "status-dot up";
   };
   eventSource.onerror = () => {
-    statusEl.textContent = "연결 끊김 (재시도 중...)";
-    statusEl.className = "status down";
+    statusEl.lastChild.textContent = "연결 끊김 (재시도 중...)";
+    dot.className = "status-dot down";
   };
-  eventSource.addEventListener("news-matched", (event) => {
-    prependLiveNotification(JSON.parse(event.data));
+  eventSource.addEventListener("news-matched", (event) => prependLiveNotification(JSON.parse(event.data)));
+}
+
+function renderStatGrid(stats) {
+  const grid = document.getElementById("stat-grid");
+  const boxes = [
+    ["👥", "accent-blue", "전체 사용자", stats.totalUsers],
+    ["🔎", "accent-violet", "전체 구독", stats.totalSubscriptions],
+    ["📰", "accent-cyan", "수집된 뉴스", stats.totalNewsArticles],
+    ["✅", "accent-emerald", "매칭됨", stats.notificationsMatched],
+    ["📤", "accent-amber", "전송됨", stats.notificationsSent],
+    ["⚠️", "accent-rose", "실패", stats.notificationsFailed],
+  ];
+  grid.innerHTML = "";
+  boxes.forEach(([icon, accent, label, value]) => {
+    grid.appendChild(
+      el("div", {
+        className: "stat-box",
+        children: [
+          el("span", { className: "icon-badge " + accent, text: icon }),
+          el("div", { children: [el("div", { className: "value", text: String(value) }), el("div", { className: "label", text: label })] }),
+        ],
+      }),
+    );
   });
 }
 
-async function showApp(session) {
-  document.getElementById("login-view").hidden = true;
-  document.getElementById("app-view").hidden = false;
-  document.getElementById("user-info").hidden = false;
-  document.getElementById("user-email").textContent = session.email;
-  document.getElementById("admin-badge").hidden = !session.isAdmin;
-  document.getElementById("admin-section").hidden = !session.isAdmin;
+function renderDailyChart(days) {
+  const wrap = document.getElementById("daily-chart");
+  wrap.innerHTML = "";
+  if (days.length === 0) {
+    wrap.appendChild(el("p", { className: "empty-note", text: "최근 7일간 데이터가 없습니다." }));
+    return;
+  }
+  const max = Math.max(...days.map((d) => d.total), 1);
+  days.forEach((d) => {
+    const heightPct = Math.max((d.total / max) * 100, 4);
+    const bar = el("div", { className: "chart-bar" });
+    bar.style.height = heightPct + "%";
+    const label = new Date(d.day).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" });
+    wrap.appendChild(
+      el("div", {
+        className: "chart-bar-col",
+        children: [el("span", { className: "chart-bar-value", text: String(d.total) }), bar, el("span", { className: "chart-bar-label", text: label })],
+      }),
+    );
+  });
+}
 
-  renderSubscriptions(await loadSubscriptions(session.email), session.email);
-  renderHistory(await loadHistory(session.email));
-  connectSse(session.id);
+function renderKeywords(keywords) {
+  const body = document.getElementById("keywords-body");
+  body.innerHTML = "";
+  if (keywords.length === 0) {
+    body.appendChild(el("tr", { children: [el("td", { text: "데이터가 없습니다.", className: "empty-note" })] }));
+    return;
+  }
+  keywords.forEach((k) => {
+    body.appendChild(el("tr", { children: [el("td", { text: k.keyword }), el("td", { text: String(k.subscriberCount) })] }));
+  });
+}
 
-  if (session.isAdmin) {
-    renderAdminStats(await loadAdminStats(session.email));
+function renderUsers(users) {
+  const body = document.getElementById("users-body");
+  body.innerHTML = "";
+  users.forEach((u) => {
+    body.appendChild(
+      el("tr", {
+        children: [
+          el("td", { text: u.email }),
+          el("td", { text: u.isMember ? "O" : "-" }),
+          el("td", { text: u.isAdmin ? "O" : "-" }),
+          el("td", { text: String(u.subscriptionCount) }),
+          el("td", { text: formatTime(u.createdAt) }),
+        ],
+      }),
+    );
+  });
+}
+
+function renderAdminRecent(items) {
+  const body = document.getElementById("admin-recent-body");
+  body.innerHTML = "";
+  items.forEach((n) => {
+    body.appendChild(
+      el("tr", {
+        children: [
+          el("td", { text: n.userEmail }),
+          el("td", { text: n.keyword }),
+          el("td", { text: n.articleTitle }),
+          el("td", { children: [statusTag(n.status)] }),
+          el("td", { text: formatTime(n.createdAt) }),
+        ],
+      }),
+    );
+  });
+}
+
+async function loadAdminView() {
+  const [stats, users, keywords, daily] = await Promise.all([
+    loadAdminStats(),
+    loadAdminUsers(),
+    loadAdminKeywords(),
+    loadAdminDaily(),
+  ]);
+  renderStatGrid(stats);
+  renderAdminRecent(stats.recentNotifications);
+  renderUsers(users);
+  renderKeywords(keywords);
+  renderDailyChart(daily);
+}
+
+function startAdminClock() {
+  const clockEl = document.getElementById("admin-clock");
+  const tick = () => (clockEl.textContent = new Date().toLocaleString("ko-KR"));
+  tick();
+  adminClockTimer = setInterval(tick, 1000);
+}
+
+function startServerStatusPoll() {
+  const statusEl = document.getElementById("server-status");
+  const dot = statusEl.querySelector(".status-dot");
+  const check = async () => {
+    try {
+      const res = await fetch("/actuator/health");
+      const ok = res.ok;
+      dot.className = "status-dot " + (ok ? "up" : "down");
+      statusEl.lastChild.textContent = ok ? "정상" : "오류";
+    } catch {
+      dot.className = "status-dot down";
+      statusEl.lastChild.textContent = "오류";
+    }
+  };
+  check();
+  serverStatusTimer = setInterval(check, 15000);
+}
+
+function stopAdminTimers() {
+  if (adminClockTimer) clearInterval(adminClockTimer);
+  if (serverStatusTimer) clearInterval(serverStatusTimer);
+}
+
+function switchView(view) {
+  const isAdmin = view === "admin";
+  document.getElementById("user-content").hidden = isAdmin;
+  document.getElementById("admin-content").hidden = !isAdmin;
+  document.querySelectorAll("#view-toggle button").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.view === view);
+  });
+  if (isAdmin) {
+    startAdminClock();
+    startServerStatusPoll();
+    loadAdminView().catch((err) => console.error(err));
+  } else {
+    stopAdminTimers();
   }
 }
 
-function showLogin() {
-  document.getElementById("login-view").hidden = false;
+async function showApp(session) {
+  document.getElementById("auth-view").hidden = true;
+  document.getElementById("app-view").hidden = false;
+  document.getElementById("user-email").textContent = session.email;
+  document.getElementById("admin-badge").hidden = !session.isAdmin;
+  document.getElementById("view-toggle").hidden = !session.isAdmin;
+
+  renderSubscriptions(await loadSubscriptions());
+  renderHistory(await loadHistory());
+  connectSse(session.token);
+  switchView("user");
+}
+
+function showAuth() {
+  stopAdminTimers();
+  document.getElementById("auth-view").hidden = false;
   document.getElementById("app-view").hidden = true;
-  document.getElementById("user-info").hidden = true;
   if (eventSource) {
     eventSource.close();
     eventSource = null;
   }
 }
 
+/* ---------------- 이벤트 바인딩 ---------------- */
+
+document.querySelectorAll(".auth-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".auth-tab").forEach((t) => t.classList.remove("active"));
+    tab.classList.add("active");
+    const isSignup = tab.dataset.tab === "signup";
+    document.getElementById("login-form").hidden = isSignup;
+    document.getElementById("signup-form").hidden = !isSignup;
+    document.getElementById("auth-error").hidden = true;
+  });
+});
+
+function showAuthError(message) {
+  const el = document.getElementById("auth-error");
+  el.textContent = message;
+  el.hidden = false;
+}
+
 document.getElementById("login-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email = document.getElementById("login-email").value.trim();
-  const errorEl = document.getElementById("login-error");
-  errorEl.hidden = true;
+  document.getElementById("auth-error").hidden = true;
   try {
-    const session = await login(email);
+    const session = await login(
+      document.getElementById("login-email").value.trim(),
+      document.getElementById("login-password").value,
+    );
     setSession(session);
     await showApp(session);
   } catch (err) {
-    errorEl.textContent = err.message;
-    errorEl.hidden = false;
+    showAuthError(err.message);
+  }
+});
+
+document.getElementById("signup-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  document.getElementById("auth-error").hidden = true;
+  try {
+    const session = await signup(
+      document.getElementById("signup-email").value.trim(),
+      document.getElementById("signup-password").value,
+    );
+    setSession(session);
+    await showApp(session);
+  } catch (err) {
+    showAuthError(err.message);
   }
 });
 
 document.getElementById("logout-btn").addEventListener("click", () => {
   clearSession();
-  showLogin();
+  showAuth();
 });
 
 document.getElementById("subscribe-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const session = getSession();
   const keyword = document.getElementById("subscribe-keyword").value.trim();
   const type = document.getElementById("subscribe-type").value;
   const errorEl = document.getElementById("subscribe-error");
   errorEl.hidden = true;
   try {
-    await createSubscription(session.email, keyword, type);
+    await createSubscription(keyword, type);
     document.getElementById("subscribe-keyword").value = "";
-    renderSubscriptions(await loadSubscriptions(session.email), session.email);
+    renderSubscriptions(await loadSubscriptions());
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.hidden = false;
@@ -272,13 +451,13 @@ document.getElementById("subscribe-form").addEventListener("submit", async (e) =
 });
 
 document.getElementById("refresh-history-btn").addEventListener("click", async () => {
-  const session = getSession();
-  renderHistory(await loadHistory(session.email));
+  renderHistory(await loadHistory());
 });
 
-document.getElementById("refresh-stats-btn").addEventListener("click", async () => {
-  const session = getSession();
-  renderAdminStats(await loadAdminStats(session.email));
+document.getElementById("refresh-admin-btn").addEventListener("click", () => loadAdminView().catch((err) => console.error(err)));
+
+document.querySelectorAll("#view-toggle button").forEach((btn) => {
+  btn.addEventListener("click", () => switchView(btn.dataset.view));
 });
 
 (async function init() {
@@ -291,5 +470,5 @@ document.getElementById("refresh-stats-btn").addEventListener("click", async () 
       clearSession();
     }
   }
-  showLogin();
+  showAuth();
 })();

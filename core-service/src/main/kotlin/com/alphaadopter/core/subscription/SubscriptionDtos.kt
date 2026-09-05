@@ -2,13 +2,10 @@ package com.alphaadopter.core.subscription
 
 import com.alphaadopter.core.domain.subscription.Subscription
 import com.alphaadopter.core.domain.subscription.SubscriptionType
-import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import java.time.Instant
 
 data class SubscriptionCreateRequest(
-    @field:NotBlank @field:Email
-    val email: String,
     @field:NotBlank
     val keyword: String,
     val type: SubscriptionType,

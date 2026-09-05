@@ -29,6 +29,12 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-mail")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("io.micrometer:micrometer-registry-prometheus")
+	implementation("org.springframework.boot:spring-boot-starter-security")
+	implementation("io.jsonwebtoken:jjwt-api:0.13.0")
+	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
+	// Jackson3(tools.jackson) 기반 프로젝트라 jjwt의 기본 jjwt-jackson(Jackson2)과의 불필요한
+	// 버전 충돌을 피하려고 gson 기반 구현체를 사용
+	runtimeOnly("io.jsonwebtoken:jjwt-gson:0.13.0")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
 	runtimeOnly("org.postgresql:postgresql")

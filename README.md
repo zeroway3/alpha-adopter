@@ -4,9 +4,8 @@
 
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
-![Status](https://img.shields.io/badge/status-MVP%20complete-brightgreen)
 
-✅ **MVP 로드맵 0~5단계 완료** — 뉴스 수집부터 AWS 배포·관측성까지 실제로 동작하는 상태
+백엔드 API 서버(REST + SSE)만 구현된 상태이며, 브라우저에서 쓰는 프론트엔드는 별도 범위입니다.
 
 ## 왜 만드는가
 

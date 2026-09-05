@@ -27,11 +27,14 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # main 브랜치 push(merge)에서만 이 역할을 쓸 수 있도록 제한 — PR 등 다른 이벤트에서는 배포 권한을 안 줌
+    # main 브랜치 push(merge)에서만 이 역할을 쓸 수 있도록 제한 — PR 등 다른 이벤트에서는 배포 권한을 안 줌.
+    # 저장소/조직 이름이 과거에 변경된 적이 있어 GitHub이 sub 클레임에 불변 숫자 ID를
+    # "owner@orgId/repo@repoId" 형태로 붙여서 발급한다 (이름 재사용을 통한 토큰 위조 방지 목적).
+    # 이름 대신 이 ID로 매칭해야 앞으로 이름이 다시 바뀌어도 신뢰 정책을 안 고쳐도 된다.
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:zeroway3/alpha-adopter:ref:refs/heads/main"]
+      values   = ["repo:*@165105348/*@1356786732:ref:refs/heads/main"]
     }
   }
 }

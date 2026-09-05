@@ -83,9 +83,14 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
 }
 
 # 이 역할로 kubectl apply를 할 수 있도록 클러스터 접근 권한 부여 (EKS Access Entry)
+# AmazonEKSEditPolicy는 ServiceMonitor 같은 커스텀 리소스(CRD)까지는 커버하지 않아서
+# (실제로 CI에서 "servicemonitors is forbidden" 에러로 확인됨), kubernetes_groups를 지정해
+# 아래 ClusterRole/ClusterRoleBinding(직접 kubectl apply, 이 프로젝트는 k8s 리소스를
+# Terraform이 아니라 kubectl로 관리하는 컨벤션)으로 CRD 권한만 별도로 얹는다.
 resource "aws_eks_access_entry" "github_actions" {
-  cluster_name  = aws_eks_cluster.main.name
-  principal_arn = aws_iam_role.github_actions_deploy.arn
+  cluster_name      = aws_eks_cluster.main.name
+  principal_arn     = aws_iam_role.github_actions_deploy.arn
+  kubernetes_groups = ["github-actions-deploy"]
 }
 
 resource "aws_eks_access_policy_association" "github_actions" {

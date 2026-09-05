@@ -53,6 +53,11 @@ jobs:
           REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          # deployment.yaml(Service/ServiceMonitor 등 매니페스트 변경분)을 먼저 적용한 뒤,
+          # 이미지 태그만 :latest가 아닌 이번 커밋의 불변 태그로 덮어써서 어떤 커밋이
+          # 배포됐는지 추적 가능하게 한다. 예전엔 set image만 하고 apply를 안 해서
+          # deployment.yaml에 반영한 변경이 실제 클러스터에 전혀 적용되지 않는 문제가 있었음.
+          kubectl apply -f infra/k8s/core-service/deployment.yaml
           kubectl set image deployment/core-service \
             core-service="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
             -n alphaadopter

@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "core-service/**"
+      - "frontend/**"
       - "infra/k8s/core-service/**"
       - ".github/workflows/deploy-core-service.yml"
   workflow_dispatch: {}
@@ -60,12 +61,15 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push image
-        working-directory: core-service
+        # Dockerfile이 frontend/(React)와 core-service/를 모두 COPY하는 멀티스테이지
+        # 빌드라 컨텍스트를 저장소 루트로 잡아야 한다 — core-service/ 하위만으로는
+        # frontend/ 디렉터리를 볼 수 없다.
         env:
           REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker buildx build --platform linux/amd64 \
+            -f core-service/Dockerfile \
             -t "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
             -t "$REGISTRY/$ECR_REPOSITORY:latest" \
             --push .

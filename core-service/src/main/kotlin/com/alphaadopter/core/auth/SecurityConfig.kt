@@ -30,7 +30,9 @@ class SecurityConfig(
             .authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers(
-                        "/", "/index.html", "/app.js", "/style.css", "/favicon.ico",
+                        // "/app.js", "/style.css"는 순수 정적 페이지 시절 파일명 — React(Vite) 전환 후
+                        // 빌드 산출물은 해시가 붙은 파일명으로 /assets/** 아래에 생성된다
+                        "/", "/index.html", "/assets/**", "/favicon.ico",
                         // 컨트롤러에서 던진 ResponseStatusException은 서블릿 sendError()를 거쳐
                         // 내부적으로 /error 로 포워딩되는데, 이 경로를 permitAll 해두지 않으면
                         // 인증 없는 요청에서는 실제 상태코드(409/401 등)가 전부 403으로 가려진다.

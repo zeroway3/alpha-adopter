@@ -1,0 +1,24 @@
+# AmazonEKSEditPolicy(EKS Access Policy)는 ServiceMonitor 같은 Prometheus Operator CRD까지는
+# 커버하지 않는다. CI/CD 역할(EKS Access Entry에서 kubernetes_groups: github-actions-deploy로
+# 매핑됨, infra/terraform/cicd.tf 참고)에 CRD apply 권한만 별도로 얹어주는 RBAC.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: github-actions-monitoring-crd-edit
+rules:
+  - apiGroups: ["monitoring.coreos.com"]
+    resources: ["servicemonitors", "podmonitors"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: github-actions-monitoring-crd-edit
+subjects:
+  - kind: Group
+    name: github-actions-deploy
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: github-actions-monitoring-crd-edit
+  apiGroup: rbac.authorization.k8s.io

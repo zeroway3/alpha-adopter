@@ -21,6 +21,8 @@ interface NotificationRepository : JpaRepository<Notification, Long> {
 
     fun findAllBySubscriptionUserIdOrderByCreatedAtDesc(userId: Long): List<Notification>
 
+    fun findFirstBySubscriptionKeywordAndNewsArticleLink(keyword: String, link: String): Notification?
+
     fun findTop20ByOrderByCreatedAtDesc(): List<Notification>
 
     fun countByStatus(status: NotificationStatus): Long

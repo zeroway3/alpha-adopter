@@ -1,0 +1,32 @@
+name: Test core-service
+
+# main 병합 전(PR) 단계에서도 테스트가 자동으로 돌게 한다. 이전엔 deploy-core-service.yml의
+# 배포 단계에서만 테스트가 돌아서, 이미 main에 머지된 뒤에야(배포 시점에) 실패를 발견했음.
+on:
+  pull_request:
+    paths:
+      - "core-service/**"
+      - ".github/workflows/test-core-service.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Run tests
+        working-directory: core-service
+        run: ./gradlew test --no-daemon
+
+      - name: Upload test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: core-service/build/reports/tests/test

@@ -5,6 +5,13 @@ spring:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5434}/${DB_NAME:alpha_adopter}
     username: ${DB_USERNAME:alpha_adopter}
     password: ${DB_PASSWORD:alpha_adopter}
+    hikari:
+      # 기존엔 이 블록이 없어 스프링 기본값(풀 10개, 타임아웃 미설정)을 그대로 썼다. Kafka
+      # 컨슈머 스레드 + 스케줄러 + 웹 요청이 같은 풀을 공유하는 구조라 명시적으로 지정해둔다.
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:10000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT_MS:30000}
   jpa:
     hibernate:
       # 초기 개발 단계 편의상 update 사용. 도메인 안정화 후 Flyway 마이그레이션 + validate로 전환 예정
@@ -86,6 +93,10 @@ app:
     # NAVER API HUB 월 할당량(775,000회) 보호용. 고유 키워드 하나당 collector.fixed-delay-ms 간격으로
     # 계속 호출되므로, 기본 60초 간격 기준 775000 / (1440회/일 * 30일) ≈ 17.9개가 이론상 한계 — 여유를 두고 15로 제한
     max-distinct-keywords: ${SUBSCRIPTION_MAX_DISTINCT_KEYWORDS:15}
+    # SubscriptionCache 갱신 주기 — news.raw 컨슈머가 뉴스 1건마다 구독 테이블 전체를 긁지 않도록
+    # 메모리 캐시로 대신하는데, 그 캐시를 얼마나 자주 최신화할지. 구독 생성/삭제 시에는 즉시
+    # 갱신되므로(SubscriptionController), 이 값은 그 사이 최악의 지연 시간일 뿐이다.
+    cache-refresh-ms: ${SUBSCRIPTION_CACHE_REFRESH_MS:30000}
   notification:
     channel: notifications
     heartbeat-interval-ms: ${NOTIFICATION_HEARTBEAT_INTERVAL_MS:20000}

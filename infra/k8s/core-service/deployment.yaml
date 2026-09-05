@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-service
+  namespace: alphaadopter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: core-service
+  template:
+    metadata:
+      labels:
+        app: core-service
+    spec:
+      containers:
+        - name: core-service
+          image: 548088753563.dkr.ecr.ap-northeast-2.amazonaws.com/alphaadopter/core-service:latest
+          ports:
+            - containerPort: 8090
+          env:
+            - name: DB_HOST
+              value: "alphaadopter-db.cv4kio0kyh90.ap-northeast-2.rds.amazonaws.com"
+            - name: DB_PORT
+              value: "5432"
+            - name: MONGODB_URI
+              value: "mongodb://mongodb.alphaadopter.svc.cluster.local:27017/alpha_adopter"
+            - name: REDIS_HOST
+              value: "alphaadopter-redis.zdshv2.0001.apn2.cache.amazonaws.com"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "alphaadopter-kafka-kafka-bootstrap.kafka.svc.cluster.local:9092"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: core-service-secrets
+                  key: DB_PASSWORD
+            - name: NAVER_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: core-service-secrets
+                  key: NAVER_CLIENT_ID
+            - name: NAVER_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: core-service-secrets
+                  key: NAVER_CLIENT_SECRET
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-service
+  namespace: alphaadopter
+spec:
+  type: LoadBalancer
+  selector:
+    app: core-service
+  ports:
+    - port: 80
+      targetPort: 8090

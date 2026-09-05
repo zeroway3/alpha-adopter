@@ -38,6 +38,49 @@ function el(tag, { text, className, children } = {}) {
   return node;
 }
 
+// 이모지 대신 쓰는 라인 아이콘 세트. 여기 들어가는 문자열은 전부 고정된 상수(외부/사용자
+// 입력 없음)라 innerHTML로 꽂아도 XSS 위험이 없다 — el()의 textContent 원칙과는 별개.
+const ICON_PATHS = {
+  search: '<circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/>',
+  zap: '<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="currentColor" stroke="none"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.5 2"/>',
+  trendingUp: '<polyline points="3 16 9 10 13 14 21 5"/><polyline points="14 5 21 5 21 12"/>',
+  tag: '<path d="M11.5 3H5a2 2 0 0 0-2 2v6.5L13.5 22 21 14.5 11.5 3z"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/>',
+  users: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.3 2.5-6 5.5-6s5.5 2.7 5.5 6"/><circle cx="17" cy="9.5" r="2.3"/><path d="M15.5 14.2c2.5.5 4.5 2.7 4.5 5.8"/>',
+  bell: '<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9z"/><path d="M10 19a2 2 0 0 0 4 0"/>',
+  newspaper: '<rect x="4" y="3" width="16" height="18" rx="1.5"/><line x1="7.5" y1="8" x2="16.5" y2="8"/><line x1="7.5" y1="12" x2="16.5" y2="12"/><line x1="7.5" y1="16" x2="13" y2="16"/>',
+  barChart: '<line x1="6" y1="20" x2="6" y2="13"/><line x1="12" y1="20" x2="12" y2="5"/><line x1="18" y1="20" x2="18" y2="16"/>',
+  checkCircle: '<circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.6 2.6 5-5.6"/>',
+  send: '<path d="M21 3 10.5 13.5"/><path d="M21 3 14 21l-3.5-8L3 9z"/>',
+  alertTriangle: '<path d="M12 3 2.5 20h19z"/><line x1="12" y1="9.5" x2="12" y2="14.5"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor" stroke="none"/>',
+  cpu: '<rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="10" y="10" width="4" height="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>',
+  home: '<path d="M4 11 12 4l8 7"/><path d="M6 10v10h5v-6h2v6h5V10"/>',
+  grid: '<rect x="4" y="4" width="7" height="7" rx="1.2"/><rect x="13" y="4" width="7" height="7" rx="1.2"/><rect x="4" y="13" width="7" height="7" rx="1.2"/><rect x="13" y="13" width="7" height="7" rx="1.2"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M4 7l8 6 8-6"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+};
+
+function iconSvg(name, size = 18) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", String(size));
+  svg.setAttribute("height", String(size));
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "1.8");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.innerHTML = ICON_PATHS[name] || "";
+  return svg;
+}
+
+// index.html에 미리 박아둔 <span data-icon="...">에 실제 svg를 채워 넣는다
+function applyStaticIcons() {
+  document.querySelectorAll("[data-icon]").forEach((node) => {
+    node.appendChild(iconSvg(node.dataset.icon, node.classList.contains("auth-feature-icon") ? 18 : 16));
+  });
+}
+
 function linkEl(href, text) {
   const a = el("a", { text });
   a.href = /^https?:\/\//i.test(href) ? href : "#";
@@ -225,20 +268,20 @@ function connectSse(token) {
 function renderStatGrid(stats) {
   const grid = document.getElementById("stat-grid");
   const boxes = [
-    ["👥", "blue", "전체 사용자", stats.totalUsers],
-    ["🔎", "violet", "전체 구독", stats.totalSubscriptions],
-    ["📰", "cyan", "수집된 뉴스", stats.totalNewsArticles],
-    ["✅", "emerald", "매칭됨", stats.notificationsMatched],
-    ["📤", "amber", "전송됨", stats.notificationsSent],
-    ["⚠️", "rose", "실패", stats.notificationsFailed],
+    ["users", "blue", "전체 사용자", stats.totalUsers],
+    ["search", "violet", "전체 구독", stats.totalSubscriptions],
+    ["newspaper", "cyan", "수집된 뉴스", stats.totalNewsArticles],
+    ["checkCircle", "emerald", "매칭됨", stats.notificationsMatched],
+    ["send", "amber", "전송됨", stats.notificationsSent],
+    ["alertTriangle", "rose", "실패", stats.notificationsFailed],
     [
-      "🤖",
+      "cpu",
       stats.aiFilterEnabled ? "emerald" : "rose",
       "AI 필터",
       stats.aiFilterEnabled ? "ON" : "OFF",
     ],
     [
-      "📊",
+      "barChart",
       "cyan",
       "평균 관련도",
       stats.averageRelevanceScore != null ? Math.round(stats.averageRelevanceScore) + "점" : "-",
@@ -246,11 +289,13 @@ function renderStatGrid(stats) {
   ];
   grid.innerHTML = "";
   boxes.forEach(([icon, color, label, value]) => {
+    const iconBox = el("span", { className: "stat-icon-box icon-" + color });
+    iconBox.appendChild(iconSvg(icon, 22));
     grid.appendChild(
       el("div", {
         className: "stat-card",
         children: [
-          el("span", { className: "stat-icon-box icon-" + color, text: icon }),
+          iconBox,
           el("div", { children: [el("div", { className: "stat-value", text: String(value) }), el("div", { className: "stat-label", text: label })] }),
         ],
       }),
@@ -401,6 +446,7 @@ async function showApp(session) {
   document.getElementById("admin-badge").hidden = !session.isAdmin;
   document.getElementById("member-role-label").hidden = session.isAdmin;
   document.getElementById("view-toggle").hidden = !session.isAdmin;
+  document.getElementById("nav-menu-label").hidden = !session.isAdmin;
 
   renderSubscriptions(await loadSubscriptions());
   renderHistory(await loadHistory());
@@ -499,6 +545,7 @@ document.querySelectorAll("#view-toggle button").forEach((btn) => {
 });
 
 (async function init() {
+  applyStaticIcons();
   const session = getSession();
   if (session) {
     try {

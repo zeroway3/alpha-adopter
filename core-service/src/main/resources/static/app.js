@@ -397,7 +397,9 @@ async function showApp(session) {
   document.getElementById("auth-view").hidden = true;
   document.getElementById("app-view").hidden = false;
   document.getElementById("user-email").textContent = session.email;
+  document.getElementById("user-avatar").textContent = session.email.charAt(0).toUpperCase();
   document.getElementById("admin-badge").hidden = !session.isAdmin;
+  document.getElementById("member-role-label").hidden = session.isAdmin;
   document.getElementById("view-toggle").hidden = !session.isAdmin;
 
   renderSubscriptions(await loadSubscriptions());

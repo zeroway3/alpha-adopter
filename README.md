@@ -113,7 +113,7 @@ cd core-service
 - [x] 1단계 — 핵심 도메인 설계 (Spring Boot + JPA, 로컬 PostgreSQL) — User/Subscription/NewsArticle/Notification 엔티티 설계 완료
 - [x] 2단계 — 뉴스 수집 파이프라인 (Kafka + MongoDB + 매칭 엔진) — 스케줄러 수집 → news.raw → MongoDB 원본 저장 → 구독 매칭 → news.matched 발행까지 구현
 - [x] 3단계 — 실시간 알림 전달 (SSE/WebSocket + Redis) — news.matched 컨슈머 → Redis Pub/Sub → 인스턴스별 SSE 커넥션으로 전달, 하트비트로 유휴 커넥션 방지
-- [ ] 4단계 — AWS 인프라 전환 (RDS, ElastiCache, EKS, Terraform)
+- [x] 4단계 — AWS 인프라 전환 (RDS, ElastiCache, EKS, Terraform) — VPC/RDS/ElastiCache/EKS Terraform으로 구성, core-service+Kafka(Strimzi)+MongoDB를 EKS에 배포, HPA 적용, GitHub Actions(OIDC) CI/CD로 자동 배포
 - [ ] 5단계 — 실측 부하테스트 및 관측성 구축
 
 ## 참고

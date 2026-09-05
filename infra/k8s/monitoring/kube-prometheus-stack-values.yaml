@@ -1,0 +1,68 @@
+# t3.small(2GB) x4 클러스터에서 Kafka+MongoDB+core-service와 같이 떠야 하므로,
+# 필요 없는 컴포넌트(Alertmanager)는 끄고 리소스 요청을 최소화한 구성.
+# Grafana는 비용(ELB)과 보안을 위해 공개 LoadBalancer 없이 ClusterIP로만 노출 —
+# 접근은 `kubectl port-forward`로 한다.
+
+alertmanager:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    # 헬름 release 라벨 없이도(다른 네임스페이스의 core-service 등) 클러스터 전역의
+    # ServiceMonitor/PodMonitor를 전부 스크랩 대상으로 인식하게 함
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    retention: 6h
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+    # core-service가 아직 CPU/메모리 요청량이 작아 기본 룰(과다 알림) 노이즈를 줄이기 위해
+    # 기본 제공 알림 룰은 비활성화 — 이번 범위는 지표 수집/시각화, 알림은 다음 단계 과제
+    ruleSelectorNilUsesHelmValues: false
+
+grafana:
+  # RWO(gp3) 볼륨을 쓰는 단일 레플리카라, 기본 RollingUpdate로 새 파드를 먼저 띄우려 하면
+  # 볼륨 Multi-Attach 에러로 멈춘다. 이전 파드를 먼저 내리는 Recreate 전략으로 고정.
+  strategy:
+    type: Recreate
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  persistence:
+    enabled: true
+    storageClassName: gp3
+    size: 1Gi
+  defaultDashboardsEnabled: true
+
+kubeStateMetrics:
+  enabled: true
+
+nodeExporter:
+  enabled: true
+
+# 매니지드 EKS라 컨트롤 플레인 자체는 스크랩 불가/불필요 — 관련 job들이 크래시 루프
+# 상태로 남는 걸 방지하기 위해 끔
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false

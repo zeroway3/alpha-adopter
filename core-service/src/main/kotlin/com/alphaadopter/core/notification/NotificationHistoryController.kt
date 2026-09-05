@@ -1,14 +1,12 @@
 package com.alphaadopter.core.notification
 
+import com.alphaadopter.core.auth.AuthPrincipal
 import com.alphaadopter.core.domain.notification.Notification
 import com.alphaadopter.core.domain.notification.NotificationRepository
-import jakarta.validation.constraints.Email
-import jakarta.validation.constraints.NotBlank
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.Instant
 
@@ -42,14 +40,13 @@ data class NotificationHistoryItem(
 // 볼 수 있도록 별도로 조회 API를 둔다.
 @RestController
 @RequestMapping("/api/notifications")
-@Validated
 class NotificationHistoryController(
     private val notificationRepository: NotificationRepository,
 ) {
 
     @GetMapping
     @Transactional(readOnly = true)
-    fun history(@RequestParam @NotBlank @Email email: String): List<NotificationHistoryItem> =
-        notificationRepository.findAllBySubscriptionUserEmailOrderByCreatedAtDesc(email)
+    fun history(@AuthenticationPrincipal principal: AuthPrincipal): List<NotificationHistoryItem> =
+        notificationRepository.findAllBySubscriptionUserIdOrderByCreatedAtDesc(principal.userId)
             .map(NotificationHistoryItem::from)
 }

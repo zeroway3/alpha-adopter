@@ -60,10 +60,15 @@ app:
   # 다이제스트 이메일의 클릭 추적 리다이렉트 링크를 만들 때 사용. 배포 환경에서는 실제 공개 도메인으로 교체
   base-url: ${APP_BASE_URL:http://localhost:8090}
   admin:
-    # 관리자 화면(/api/admin/**) 접근을 허용할 이메일 목록 (콤마 구분). 인증 시스템이 없는 단계라
-    # DB 플래그 대신 배포 환경변수로만 관리한다 (AdminEmailChecker 참고). 공개 저장소라 실제 이메일은
-    # 여기 커밋하지 않고 core-service-secrets(K8s Secret)의 ADMIN_EMAILS 키로만 주입한다.
+    # 관리자 화면(/api/admin/**) 접근을 허용할 이메일 목록 (콤마 구분). 로그인 자체는 이메일+비밀번호로
+    # 인증하지만, "누가 관리자인가"는 별도 역할(Role) 테이블 없이 배포 환경변수로만 판단한다
+    # (AdminEmailChecker 참고). 공개 저장소라 실제 이메일은 여기 커밋하지 않고
+    # core-service-secrets(K8s Secret)의 ADMIN_EMAILS 키로만 주입한다.
     emails: ${ADMIN_EMAILS:}
+  jwt:
+    # HS256은 최소 256비트(32바이트) 키 필요. 로컬 기본값은 개발 편의용이며, 배포 환경에서는
+    # core-service-secrets(K8s Secret)의 JWT_SECRET으로 반드시 교체해서 사용한다.
+    secret: ${JWT_SECRET:M0851ikfMgAC8/ZE7Eb6/CKw1C0JFEtbwlHs9q1vLxQ=}
   kafka:
     topic:
       news-raw: news.raw

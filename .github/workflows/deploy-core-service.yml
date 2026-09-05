@@ -7,6 +7,7 @@ on:
       - "core-service/**"
       - "infra/k8s/core-service/**"
       - ".github/workflows/deploy-core-service.yml"
+  workflow_dispatch: {}
 
 permissions:
   id-token: write # OIDC로 AWS 자격증명을 받기 위해 필요 (장기 액세스 키 미사용)
@@ -22,6 +23,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Debug OIDC token claims
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          JWT=$(curl -sSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r '.value')
+          echo "$JWT" | cut -d '.' -f2 | base64 -d 2>/dev/null | jq '{iss, aud, sub, repository, ref}'
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4

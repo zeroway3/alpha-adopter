@@ -1,0 +1,59 @@
+name: Deploy core-service to EKS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "core-service/**"
+      - "infra/k8s/core-service/**"
+      - ".github/workflows/deploy-core-service.yml"
+
+permissions:
+  id-token: write # OIDC로 AWS 자격증명을 받기 위해 필요 (장기 액세스 키 미사용)
+  contents: read
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: alphaadopter/core-service
+  EKS_CLUSTER_NAME: alphaadopter
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        working-directory: core-service
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker buildx build --platform linux/amd64 \
+            -t "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            -t "$REGISTRY/$ECR_REPOSITORY:latest" \
+            --push .
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: Deploy to EKS
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          kubectl set image deployment/core-service \
+            core-service="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            -n alphaadopter
+          kubectl apply -f infra/k8s/core-service/hpa.yaml
+          kubectl rollout status deployment/core-service -n alphaadopter --timeout=180s

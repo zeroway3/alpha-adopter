@@ -134,11 +134,15 @@ class AdminStatsController(
     @GetMapping("/users")
     fun users(@AuthenticationPrincipal principal: AuthPrincipal): List<AdminUserSummary> {
         requireAdmin(principal)
+        // 예전엔 유저마다 countByUserId를 따로 호출해 유저 수만큼 쿼리가 나가는 N+1이었다.
+        // 구독 수를 한 번에 GROUP BY로 집계해두고 메모리에서 조인한다 (쿼리 2개로 고정).
+        val subscriptionCountsByUserId = subscriptionRepository.countGroupedByUser()
+            .associate { it.getUserId() to it.getCount() }
         return userRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).map { user ->
             AdminUserSummary.from(
                 user = user,
                 isAdmin = adminEmailChecker.isAdmin(user.email),
-                subscriptionCount = subscriptionRepository.countByUserId(user.id!!),
+                subscriptionCount = subscriptionCountsByUserId[user.id!!] ?: 0L,
             )
         }
     }

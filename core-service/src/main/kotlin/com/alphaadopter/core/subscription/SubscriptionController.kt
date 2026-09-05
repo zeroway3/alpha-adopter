@@ -26,6 +26,7 @@ import org.springframework.web.server.ResponseStatusException
 class SubscriptionController(
     private val userRepository: UserRepository,
     private val subscriptionRepository: SubscriptionRepository,
+    private val subscriptionCache: SubscriptionCache,
     @Value("\${app.subscription.max-distinct-keywords}") private val maxDistinctKeywords: Long,
 ) {
 
@@ -54,6 +55,9 @@ class SubscriptionController(
         val subscription = subscriptionRepository.save(
             Subscription(user = user, keyword = request.keyword, type = request.type),
         )
+        // SubscriptionCache는 기본 30초 주기로만 갱신되는데, 방금 구독한 키워드 뉴스가 그 사이에
+        // 들어오면 놓칠 수 있어 여기서 즉시 갱신해준다.
+        subscriptionCache.refresh()
         return ResponseEntity.status(HttpStatus.CREATED).body(SubscriptionResponse.from(subscription))
     }
 
@@ -72,5 +76,6 @@ class SubscriptionController(
         }
 
         subscriptionRepository.delete(subscription)
+        subscriptionCache.refresh()
     }
 }

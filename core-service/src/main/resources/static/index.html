@@ -13,13 +13,23 @@
   <section id="auth-view">
     <div class="auth-decor">
       <div class="auth-decor-content">
-        <div class="auth-logo-badge">A</div>
+        <svg class="logo-mark" width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="logoGrad" x1="0" y1="0" x2="52" y2="52" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#3b82f6" />
+              <stop offset="1" stop-color="#8b5cf6" />
+            </linearGradient>
+          </defs>
+          <rect width="52" height="52" rx="14" fill="url(#logoGrad)" />
+          <path d="M13 32 L22 22 L28 28 L39 15" stroke="white" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+          <circle cx="39" cy="15" r="3.4" fill="white" />
+        </svg>
         <h1>AlphaAdopter<br /><span style="opacity:.75">뉴스 알림 플랫폼</span></h1>
         <p class="tagline">관심 키워드·종목 뉴스를 실시간으로 감지해 가장 먼저 알려드립니다.</p>
         <div class="auth-feature-list">
           <div class="auth-feature">
             <span class="emoji">📰</span>
-            <div><div class="title">실시간 뉴스 감지</div><div class="desc">키워드 매칭 기반 자동 수집·알림</div></div>
+            <div><div class="title">실시간 뉴스 감지</div><div class="desc">키워드 매칭 + AI 관련도 필터링 기반 자동 수집·알림</div></div>
           </div>
           <div class="auth-feature">
             <span class="emoji">⚡</span>
@@ -36,7 +46,11 @@
     <div class="auth-form-side">
       <div class="auth-card">
         <div class="auth-mobile-logo">
-          <div class="badge-circle">A</div>
+          <svg class="logo-mark" width="40" height="40" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="52" height="52" rx="14" fill="url(#logoGrad)" />
+            <path d="M13 32 L22 22 L28 28 L39 15" stroke="white" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            <circle cx="39" cy="15" r="3.4" fill="white" />
+          </svg>
           <h1>AlphaAdopter</h1>
         </div>
 
@@ -88,161 +102,193 @@
     </div>
   </section>
 
-  <!-- ===================== 앱 화면 ===================== -->
+  <!-- ===================== 앱 화면 (사이드바 + 본문) ===================== -->
   <div id="app-view" hidden>
-    <header class="topbar">
-      <div class="brand">
-        <span class="badge-circle">A</span>
-        AlphaAdopter
-      </div>
-      <div style="display:flex; align-items:center; gap:1.1rem;">
-        <div id="view-toggle" class="view-toggle" hidden>
-          <button type="button" data-view="user" class="active">내 화면</button>
-          <button type="button" data-view="admin">관리자</button>
-        </div>
-        <div class="user-info">
-          <span id="user-email"></span>
-          <span id="admin-badge" class="badge badge-primary" hidden>ADMIN</span>
-          <button id="logout-btn" class="btn btn-outline btn-sm">로그아웃</button>
-        </div>
-      </div>
-    </header>
-
-    <!-- 일반 사용자 화면 -->
-    <main id="user-content" class="content">
-      <section class="card">
-        <div class="card-header">
-          <span class="card-icon tint-blue">🔎</span>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <svg class="logo-mark" width="34" height="34" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="logoGradSidebar" x1="0" y1="0" x2="52" y2="52" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#3b82f6" />
+                <stop offset="1" stop-color="#8b5cf6" />
+              </linearGradient>
+            </defs>
+            <rect width="52" height="52" rx="14" fill="url(#logoGradSidebar)" />
+            <path d="M13 32 L22 22 L28 28 L39 15" stroke="white" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            <circle cx="39" cy="15" r="3.4" fill="white" />
+          </svg>
           <div>
-            <div class="card-title">키워드/종목 구독</div>
-            <div class="card-subtitle">관심 있는 키워드를 등록하면 뉴스가 뜰 때 알려드려요</div>
+            <div class="logo-wordmark">AlphaAdopter</div>
+            <div class="sub">뉴스 알림 플랫폼</div>
           </div>
         </div>
-        <form id="subscribe-form" class="inline-form">
-          <div class="field-input-wrap">
-            <input type="text" class="field-input" style="padding-left:1rem" id="subscribe-keyword" placeholder="예: 삼성전자" required />
-          </div>
-          <select id="subscribe-type" class="field-input">
-            <option value="KEYWORD">키워드</option>
-            <option value="STOCK_CODE">종목코드</option>
-          </select>
-          <button type="submit" class="btn btn-primary">구독</button>
-        </form>
-        <p id="subscribe-error" class="form-error" hidden></p>
-        <ul id="subscription-list" class="item-list"></ul>
-      </section>
 
-      <section class="card">
-        <div class="card-header">
-          <span class="card-icon tint-emerald">⚡</span>
-          <div>
-            <div class="card-title">실시간 알림</div>
-            <div class="card-subtitle">
-              <span id="sse-status" class="status-pill">
-                <span class="status-dot-wrap"><span class="status-dot-ping"></span><span class="status-dot"></span></span>
-                <span class="status-text">연결 중...</span>
-              </span>
+        <nav class="sidebar-nav">
+          <div class="sidebar-nav-label">메뉴</div>
+          <div id="view-toggle" hidden>
+            <button type="button" data-view="user" class="sidebar-nav-item active">
+              <span class="icon">🏠</span> 내 화면
+            </button>
+            <button type="button" data-view="admin" class="sidebar-nav-item">
+              <span class="icon">📊</span> 관리자
+            </button>
+          </div>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="sidebar-user">
+            <span id="user-avatar" class="sidebar-user-avatar"></span>
+            <div class="sidebar-user-info">
+              <div id="user-email" class="sidebar-user-email"></div>
+              <div class="sidebar-user-role">
+                <span id="admin-badge" class="badge badge-primary" hidden>ADMIN</span>
+                <span id="member-role-label" class="sidebar-user-role">일반 회원</span>
+              </div>
             </div>
           </div>
+          <button id="logout-btn" class="btn btn-outline btn-sm btn-full">로그아웃</button>
         </div>
-        <ul id="live-feed" class="feed-list"></ul>
-      </section>
+      </aside>
 
-      <section class="card">
-        <div class="card-header" style="justify-content:space-between;">
-          <div style="display:flex; align-items:center; gap:0.75rem;">
-            <span class="card-icon tint-violet">🕘</span>
-            <div class="card-title">알림 히스토리</div>
-          </div>
-          <button id="refresh-history-btn" class="btn btn-outline btn-sm">새로고침</button>
-        </div>
-        <div class="table-card">
-          <div class="table-scroll">
-            <table class="data-table">
-              <thead><tr><th>키워드</th><th>기사</th><th>AI 관련도</th><th>상태</th><th>수신</th><th>읽음</th><th>클릭</th></tr></thead>
-              <tbody id="history-body"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-    </main>
+      <div class="main-area">
+        <!-- 일반 사용자 화면 -->
+        <main id="user-content" class="content">
+          <section class="card">
+            <div class="card-header">
+              <span class="card-icon tint-blue">🔎</span>
+              <div>
+                <div class="card-title">키워드/종목 구독</div>
+                <div class="card-subtitle">관심 있는 키워드를 등록하면 뉴스가 뜰 때 알려드려요</div>
+              </div>
+            </div>
+            <form id="subscribe-form" class="inline-form">
+              <div class="field-input-wrap">
+                <input type="text" class="field-input" style="padding-left:1rem" id="subscribe-keyword" placeholder="예: 삼성전자" required />
+              </div>
+              <select id="subscribe-type" class="field-input">
+                <option value="KEYWORD">키워드</option>
+                <option value="STOCK_CODE">종목코드</option>
+              </select>
+              <button type="submit" class="btn btn-primary">구독</button>
+            </form>
+            <p id="subscribe-error" class="form-error" hidden></p>
+            <ul id="subscription-list" class="item-list"></ul>
+          </section>
 
-    <!-- 관리자 화면 -->
-    <main id="admin-content" class="content" hidden>
-      <div class="admin-header">
-        <h2>관리자 대시보드</h2>
-        <div style="display:flex; align-items:center; gap:1.1rem;">
-          <span id="admin-clock" class="clock"></span>
-          <span id="server-status" class="status-pill">
-            <span class="status-dot-wrap"><span class="status-dot-ping"></span><span class="status-dot"></span></span>
-            <span class="status-text">확인 중</span>
-          </span>
-          <button id="refresh-admin-btn" class="btn btn-outline btn-sm">새로고침</button>
-        </div>
+          <section class="card">
+            <div class="card-header">
+              <span class="card-icon tint-emerald">⚡</span>
+              <div>
+                <div class="card-title">실시간 알림</div>
+                <div class="card-subtitle">
+                  <span id="sse-status" class="status-pill">
+                    <span class="status-dot-wrap"><span class="status-dot-ping"></span><span class="status-dot"></span></span>
+                    <span class="status-text">연결 중...</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <ul id="live-feed" class="feed-list"></ul>
+          </section>
+
+          <section class="card">
+            <div class="card-header" style="justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:0.75rem;">
+                <span class="card-icon tint-violet">🕘</span>
+                <div class="card-title">알림 히스토리</div>
+              </div>
+              <button id="refresh-history-btn" class="btn btn-outline btn-sm">새로고침</button>
+            </div>
+            <div class="table-card">
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead><tr><th>키워드</th><th>기사</th><th>AI 관련도</th><th>상태</th><th>수신</th><th>읽음</th><th>클릭</th></tr></thead>
+                  <tbody id="history-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <!-- 관리자 화면 -->
+        <main id="admin-content" class="content" hidden>
+          <div class="admin-header">
+            <h2>관리자 대시보드</h2>
+            <div style="display:flex; align-items:center; gap:1.1rem;">
+              <span id="admin-clock" class="clock"></span>
+              <span id="server-status" class="status-pill">
+                <span class="status-dot-wrap"><span class="status-dot-ping"></span><span class="status-dot"></span></span>
+                <span class="status-text">확인 중</span>
+              </span>
+              <button id="refresh-admin-btn" class="btn btn-outline btn-sm">새로고침</button>
+            </div>
+          </div>
+
+          <div id="stat-grid" class="stat-grid"></div>
+
+          <section class="card">
+            <div class="card-header">
+              <span class="card-icon tint-cyan">📈</span>
+              <div>
+                <div class="card-title">최근 7일 알림 발생 추이</div>
+                <div class="card-subtitle">일자별 매칭·발송된 알림 총량</div>
+              </div>
+            </div>
+            <div id="daily-chart" class="chart-wrap"></div>
+            <p class="grafana-note">
+              상세 시계열 메트릭(CPU/메모리/처리량)은 Grafana에서 확인 — 비용/보안상 공개 노출하지 않고
+              <code>kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80</code> 으로 접근합니다.
+            </p>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <span class="card-icon tint-amber">🏷️</span>
+              <div class="card-title">인기 키워드 TOP 10</div>
+            </div>
+            <div class="table-card">
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead><tr><th>키워드</th><th>구독자 수</th></tr></thead>
+                  <tbody id="keywords-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <span class="card-icon tint-violet">👥</span>
+              <div class="card-title">전체 사용자</div>
+            </div>
+            <div class="table-card">
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead><tr><th>이메일</th><th>회원</th><th>관리자</th><th>구독 수</th><th>가입일</th></tr></thead>
+                  <tbody id="users-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <span class="card-icon tint-rose">🔔</span>
+              <div class="card-title">전체 최근 알림</div>
+            </div>
+            <div class="table-card">
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead><tr><th>사용자</th><th>키워드</th><th>기사</th><th>AI 관련도</th><th>상태</th><th>발생 시각</th></tr></thead>
+                  <tbody id="admin-recent-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </main>
       </div>
-
-      <div id="stat-grid" class="stat-grid"></div>
-
-      <section class="card">
-        <div class="card-header">
-          <span class="card-icon tint-cyan">📈</span>
-          <div>
-            <div class="card-title">최근 7일 알림 발생 추이</div>
-            <div class="card-subtitle">일자별 매칭·발송된 알림 총량</div>
-          </div>
-        </div>
-        <div id="daily-chart" class="chart-wrap"></div>
-        <p class="grafana-note">
-          상세 시계열 메트릭(CPU/메모리/처리량)은 Grafana에서 확인 — 비용/보안상 공개 노출하지 않고
-          <code>kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80</code> 으로 접근합니다.
-        </p>
-      </section>
-
-      <section class="card">
-        <div class="card-header">
-          <span class="card-icon tint-amber">🏷️</span>
-          <div class="card-title">인기 키워드 TOP 10</div>
-        </div>
-        <div class="table-card">
-          <div class="table-scroll">
-            <table class="data-table">
-              <thead><tr><th>키워드</th><th>구독자 수</th></tr></thead>
-              <tbody id="keywords-body"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section class="card">
-        <div class="card-header">
-          <span class="card-icon tint-violet">👥</span>
-          <div class="card-title">전체 사용자</div>
-        </div>
-        <div class="table-card">
-          <div class="table-scroll">
-            <table class="data-table">
-              <thead><tr><th>이메일</th><th>회원</th><th>관리자</th><th>구독 수</th><th>가입일</th></tr></thead>
-              <tbody id="users-body"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section class="card">
-        <div class="card-header">
-          <span class="card-icon tint-rose">🔔</span>
-          <div class="card-title">전체 최근 알림</div>
-        </div>
-        <div class="table-card">
-          <div class="table-scroll">
-            <table class="data-table">
-              <thead><tr><th>사용자</th><th>키워드</th><th>기사</th><th>AI 관련도</th><th>상태</th><th>발생 시각</th></tr></thead>
-              <tbody id="admin-recent-body"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-    </main>
+    </div>
   </div>
 
   <script src="/app.js"></script>

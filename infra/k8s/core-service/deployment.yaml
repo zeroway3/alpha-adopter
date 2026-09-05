@@ -17,7 +17,8 @@ spec:
         - name: core-service
           image: 548088753563.dkr.ecr.ap-northeast-2.amazonaws.com/alphaadopter/core-service:latest
           ports:
-            - containerPort: 8090
+            - name: http
+              containerPort: 8090
           env:
             - name: DB_HOST
               value: "alphaadopter-db.cv4kio0kyh90.ap-northeast-2.rds.amazonaws.com"
@@ -58,10 +59,27 @@ kind: Service
 metadata:
   name: core-service
   namespace: alphaadopter
+  labels:
+    app: core-service
 spec:
   type: LoadBalancer
   selector:
     app: core-service
   ports:
-    - port: 80
-      targetPort: 8090
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: core-service
+  namespace: alphaadopter
+spec:
+  selector:
+    matchLabels:
+      app: core-service
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s

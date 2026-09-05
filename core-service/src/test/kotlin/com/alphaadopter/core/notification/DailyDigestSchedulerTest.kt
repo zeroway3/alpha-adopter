@@ -1,5 +1,6 @@
 package com.alphaadopter.core.notification
 
+import com.alphaadopter.core.IntegrationTestBase
 import com.alphaadopter.core.domain.news.NewsArticle
 import com.alphaadopter.core.domain.news.NewsArticleRepository
 import com.alphaadopter.core.domain.notification.Notification
@@ -12,14 +13,12 @@ import com.alphaadopter.core.domain.user.User
 import com.alphaadopter.core.domain.user.UserRepository
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
-@SpringBootTest
-class DailyDigestSchedulerTest {
+class DailyDigestSchedulerTest : IntegrationTestBase() {
 
     @Autowired
     lateinit var dailyDigestScheduler: DailyDigestScheduler

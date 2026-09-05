@@ -1,17 +1,16 @@
 package com.alphaadopter.core.auth
 
+import com.alphaadopter.core.IntegrationTestBase
 import com.alphaadopter.core.domain.user.UserRepository
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-@SpringBootTest
-class AuthControllerTest {
+class AuthControllerTest : IntegrationTestBase() {
 
     @Autowired
     lateinit var authController: AuthController

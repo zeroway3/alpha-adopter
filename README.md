@@ -17,6 +17,8 @@
 - 관련 뉴스 발생 시 실시간 알림 전달 (SSE + Redis Pub/Sub)
 - 비회원은 일일 다이제스트 이메일, 회원은 실시간 SSE로 차등 전달
 - 알림 읽음/클릭 참여도 추적 (향후 개인화 필터링을 위한 데이터 수집 단계, [future-ideas](docs/future-ideas.md) 참고)
+- 최소한의 웹 프런트엔드 (`core-service`가 정적 리소스로 직접 서빙, 별도 빌드/배포 파이프라인 없음): 이메일 입력만으로 로그인, 구독 관리, 실시간 알림 피드, 알림 히스토리
+- 관리자 화면: `app.admin.emails` 화이트리스트에 등록된 이메일로 로그인하면 전체 사용자/구독/알림 통계와 최근 알림 목록을 볼 수 있음 (DB 플래그나 별도 로그인 없이 배포 환경변수로만 판단 — 인증 시스템 도입 전 임시 방식)
 
 투자 조언·매매 시그널 등 자본시장법상 유사투자자문업으로 해석될 수 있는 기능은 스코프에서 명시적으로 제외합니다. 뉴스 원문 전체를 저장·재배포하지 않고 제목·요약·링크 위주로 다뤄 저작권 이슈를 피합니다. 현재 매칭은 키워드 문자열 포함 여부 기반이며, AI 기반 관련도 판단·노이즈 필터링은 아직 구현 전입니다.
 
@@ -71,14 +73,17 @@ alpha-adopter/
 │   └── k8s/                     # core-service/Kafka(Strimzi)/MongoDB/모니터링 매니페스트
 ├── loadtest/                    # k6 부하테스트 시나리오
 └── core-service/                # 핵심 백엔드 서비스 (Kotlin + Spring Boot)
-    └── src/main/kotlin/com/alphaadopter/core/
-        ├── domain/              # User, Subscription, NewsArticle, Notification
-        ├── collector/           # NAVER 뉴스 수집 (NaverNewsClient, 스케줄러)
-        ├── pipeline/            # Kafka 컨슈머, MongoDB 원본 저장, 매칭 엔진
-        ├── notification/        # 실시간 알림 전달(SSE + Redis Pub/Sub), 일일 다이제스트 이메일, 읽음/클릭 참여도 추적
-        ├── subscription/        # 구독 등록/조회/삭제 REST API (인증 도입 전까지 email로 사용자 식별, NAVER API 할당량 보호를 위한 신규 키워드 총량 제한)
-        ├── user/                # 회원 전환 REST API (결제/인증 없이 email 기반)
-        └── config/              # Kafka 토픽 등 설정
+    └── src/main
+        ├── kotlin/com/alphaadopter/core/
+        │   ├── domain/          # User, Subscription, NewsArticle, Notification
+        │   ├── collector/       # NAVER 뉴스 수집 (NaverNewsClient, 스케줄러)
+        │   ├── pipeline/        # Kafka 컨슈머, MongoDB 원본 저장, 매칭 엔진
+        │   ├── notification/    # 실시간 알림 전달(SSE + Redis Pub/Sub), 일일 다이제스트 이메일, 읽음/클릭 참여도 추적, 알림 히스토리 조회
+        │   ├── subscription/    # 구독 등록/조회/삭제 REST API (인증 도입 전까지 email로 사용자 식별, NAVER API 할당량 보호를 위한 신규 키워드 총량 제한)
+        │   ├── user/            # 회원 전환(로그인 대체) REST API, 관리자 이메일 화이트리스트 판별
+        │   ├── admin/           # 관리자 전용 통계 API (전체 사용자/구독/알림 집계, 화이트리스트 기반 접근 제어)
+        │   └── config/          # Kafka 토픽 등 설정
+        └── resources/static/    # 최소 웹 프런트엔드 (빌드 도구 없는 순수 HTML/CSS/JS, core-service가 직접 서빙)
 ```
 
 ## 로컬 개발 환경

@@ -59,6 +59,11 @@ naver:
 app:
   # 다이제스트 이메일의 클릭 추적 리다이렉트 링크를 만들 때 사용. 배포 환경에서는 실제 공개 도메인으로 교체
   base-url: ${APP_BASE_URL:http://localhost:8090}
+  admin:
+    # 관리자 화면(/api/admin/**) 접근을 허용할 이메일 목록 (콤마 구분). 인증 시스템이 없는 단계라
+    # DB 플래그 대신 배포 환경변수로만 관리한다 (AdminEmailChecker 참고). 공개 저장소라 실제 이메일은
+    # 여기 커밋하지 않고 core-service-secrets(K8s Secret)의 ADMIN_EMAILS 키로만 주입한다.
+    emails: ${ADMIN_EMAILS:}
   kafka:
     topic:
       news-raw: news.raw

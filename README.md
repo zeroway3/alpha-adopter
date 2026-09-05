@@ -1,43 +1,45 @@
 # AlphaAdopter
 
-> 관심 종목·키워드에 대한 뉴스를 실시간으로 감지해, AI로 중요도를 판단하고 가장 먼저 알려주는 실시간 정보 알림 플랫폼
+> 관심 종목·키워드에 대한 뉴스를 실시간으로 감지해 가장 먼저 알려주는 실시간 정보 알림 플랫폼
 
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
-![Status](https://img.shields.io/badge/status-in%20progress-orange)
+![Status](https://img.shields.io/badge/status-MVP%20complete-brightgreen)
 
-🚧 **개발 진행 중 (MVP 단계)**
+✅ **MVP 로드맵 0~5단계 완료** — 뉴스 수집부터 AWS 배포·관측성까지 실제로 동작하는 상태
 
 ## 왜 만드는가
 
-정보가 넘치는 시대일수록, "내가 원하는 정보를 얼마나 빠르게 받아보는가"가 중요해지고 있습니다. AlphaAdopter는 사용자가 등록한 키워드/관심 종목과 관련된 뉴스가 발생하면, AI로 관련도를 판단해 노이즈를 걸러내고 실시간으로 알림을 전달하는 서비스입니다.
+정보가 넘치는 시대일수록, "내가 원하는 정보를 얼마나 빠르게 받아보는가"가 중요해지고 있습니다. AlphaAdopter는 사용자가 등록한 키워드/관심 종목과 관련된 뉴스가 발생하면, 노이즈를 걸러내고 실시간으로 알림을 전달하는 서비스입니다.
 
 ## 핵심 기능 (MVP)
 
-- 키워드/관심 종목 구독 등록
-- 뉴스 소스 실시간 수집 (RSS/공식 API)
-- AI 기반 관련도 판단 및 노이즈 필터링
-- 관련 뉴스 발생 시 실시간 알림 전달 (SSE/WebSocket)
+- 키워드/관심 종목 구독 등록·조회·삭제
+- 뉴스 소스 실시간 수집 (NAVER API HUB)
+- 구독 키워드 기반 매칭 및 알림 발행
+- 관련 뉴스 발생 시 실시간 알림 전달 (SSE + Redis Pub/Sub)
+- 비회원은 일일 다이제스트 이메일, 회원은 실시간 SSE로 차등 전달
+- 알림 읽음/클릭 참여도 추적 (향후 개인화 필터링을 위한 데이터 수집 단계, [future-ideas](docs/future-ideas.md) 참고)
 
-투자 조언·매매 시그널 등 자본시장법상 유사투자자문업으로 해석될 수 있는 기능은 스코프에서 명시적으로 제외합니다. 뉴스 원문 전체를 저장·재배포하지 않고 제목·요약·링크 위주로 다뤄 저작권 이슈를 피합니다.
+투자 조언·매매 시그널 등 자본시장법상 유사투자자문업으로 해석될 수 있는 기능은 스코프에서 명시적으로 제외합니다. 뉴스 원문 전체를 저장·재배포하지 않고 제목·요약·링크 위주로 다뤄 저작권 이슈를 피합니다. 현재 매칭은 키워드 문자열 포함 여부 기반이며, AI 기반 관련도 판단·노이즈 필터링은 아직 구현 전입니다.
 
 ## 아키텍처
 
 ```
-[뉴스 소스 (RSS/API)]
+[뉴스 소스 (NAVER API HUB)]
         │
         ▼
   [수집기] ──▶ Kafka(news.raw) ──▶ [MongoDB: 원본 저장]
                                           │
                                           ▼
                               [매칭 엔진: Spring Boot + JPA]
-                              (구독 키워드 ↔ 뉴스, AI 관련도 판단)
+                              (구독 키워드 ↔ 뉴스, 문자열 매칭)
                                           │
                                           ▼
                               Kafka(news.matched)
                                           │
                                           ▼
-                         [알림 서비스: SSE/WebSocket + Redis]
+                         [알림 서비스: SSE + Redis Pub/Sub]
                                           │
                                           ▼
                                     [클라이언트]
@@ -117,7 +119,7 @@ cd core-service
 - [x] 0단계 — 뉴스 데이터 소스 검증, MVP 스코프 확정 ([검증 결과](docs/phase0-news-source-validation.md))
 - [x] 1단계 — 핵심 도메인 설계 (Spring Boot + JPA, 로컬 PostgreSQL) — User/Subscription/NewsArticle/Notification 엔티티 설계 완료
 - [x] 2단계 — 뉴스 수집 파이프라인 (Kafka + MongoDB + 매칭 엔진) — 스케줄러 수집 → news.raw → MongoDB 원본 저장 → 구독 매칭 → news.matched 발행까지 구현
-- [x] 3단계 — 실시간 알림 전달 (SSE/WebSocket + Redis) — news.matched 컨슈머 → Redis Pub/Sub → 인스턴스별 SSE 커넥션으로 전달, 하트비트로 유휴 커넥션 방지
+- [x] 3단계 — 실시간 알림 전달 (SSE + Redis) — news.matched 컨슈머 → Redis Pub/Sub → 인스턴스별 SSE 커넥션으로 전달, 하트비트로 유휴 커넥션 방지
 - [x] 4단계 — AWS 인프라 전환 (RDS, ElastiCache, EKS, Terraform) — VPC/RDS/ElastiCache/EKS Terraform으로 구성, core-service+Kafka(Strimzi)+MongoDB를 EKS에 배포, HPA 적용, GitHub Actions(OIDC) CI/CD로 자동 배포
 - [x] 5단계 — 실측 부하테스트 및 관측성 구축 — Prometheus+Grafana(kube-prometheus-stack)로 관측성 구축, k6로 구독 API 부하테스트 실시 ([결과](docs/phase5-load-test-observability.md))
 

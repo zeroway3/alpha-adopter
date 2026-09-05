@@ -83,7 +83,11 @@ a { color: inherit; }
   background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
   border-radius: var(--radius-lg); backdrop-filter: blur(6px);
 }
-.auth-feature .emoji { font-size: 1.4rem; }
+.auth-feature-icon {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.06); color: #b9c2d6;
+}
 .auth-feature .title { font-weight: 700; font-size: 0.92rem; color: #f1f3f7; }
 .auth-feature .desc { font-size: 0.8rem; color: #8891a3; margin-top: 0.1rem; }
 
@@ -118,14 +122,15 @@ a { color: inherit; }
 }
 @keyframes scale-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
 
-.auth-footer-note { text-align: center; margin-top: 2rem; font-size: 0.78rem; color: var(--text-faint); }
-
 /* ===================== 공용 컴포넌트 ===================== */
 
 .field-group { margin-bottom: 1.25rem; }
 .field-label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.4rem; color: #c2c8d4; }
 .field-input-wrap { position: relative; }
-.field-input-wrap .icon { position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%); color: var(--text-faint); pointer-events: none; }
+.field-input-wrap .icon {
+  position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%);
+  display: flex; color: var(--text-faint); pointer-events: none;
+}
 .field-input {
   width: 100%; padding: 0.65rem 1rem 0.65rem 2.6rem;
   border-radius: var(--radius-md); border: 1px solid var(--border-strong);
@@ -269,7 +274,7 @@ a { color: inherit; }
   color: var(--text-muted); font-size: 0.88rem; font-weight: 500;
   transition: all 0.15s ease;
 }
-.sidebar-nav-item .icon { font-size: 1.05rem; width: 1.3rem; text-align: center; }
+.sidebar-nav-item .icon { display: inline-flex; align-items: center; justify-content: center; width: 1.3rem; flex-shrink: 0; }
 .sidebar-nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
 .sidebar-nav-item.active { background: rgba(59,130,246,0.14); color: #7bb0fb; }
 
@@ -322,11 +327,10 @@ form.inline-form select.field-input { padding-left: 1rem; cursor: pointer; }
 .chart-bar-label { font-size: 0.7rem; color: var(--text-faint); }
 .chart-bar-value { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); }
 
-.grafana-note {
-  margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted);
-  background: rgba(255,255,255,0.03); border: 1px dashed var(--border); border-radius: var(--radius-md); padding: 0.8rem 1rem;
+.ops-note {
+  margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.8rem 1rem;
 }
-.grafana-note code { background: rgba(255,255,255,0.08); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.76rem; }
 
 /* ===================== 반응형 ===================== */
 

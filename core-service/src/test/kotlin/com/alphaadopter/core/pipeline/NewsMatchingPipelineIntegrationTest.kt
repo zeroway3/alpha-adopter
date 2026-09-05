@@ -10,6 +10,7 @@ import com.alphaadopter.core.domain.subscription.SubscriptionRepository
 import com.alphaadopter.core.domain.subscription.SubscriptionType
 import com.alphaadopter.core.domain.user.User
 import com.alphaadopter.core.domain.user.UserRepository
+import com.alphaadopter.core.subscription.SubscriptionCache
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.kafka.core.KafkaTemplate
@@ -39,6 +40,9 @@ class NewsMatchingPipelineIntegrationTest : IntegrationTestBase() {
     lateinit var subscriptionRepository: SubscriptionRepository
 
     @Autowired
+    lateinit var subscriptionCache: SubscriptionCache
+
+    @Autowired
     lateinit var newsArticleRepository: NewsArticleRepository
 
     @Autowired
@@ -52,6 +56,11 @@ class NewsMatchingPipelineIntegrationTest : IntegrationTestBase() {
         val keyword = "테스트키워드${System.nanoTime()}"
         val user = userRepository.save(User(email = "pipeline-${System.nanoTime()}@example.com", isMember = true))
         subscriptionRepository.save(Subscription(user = user, keyword = keyword, type = SubscriptionType.KEYWORD))
+        // 실제 서비스에서는 SubscriptionController.create()가 저장 직후 캐시를 즉시 갱신한다
+        // (SubscriptionCache는 기본 30초 주기로만 갱신되므로). 이 테스트는 컨트롤러를 거치지
+        // 않고 리포지토리에 직접 저장하므로, 캐시가 새로고침되기 전에 컨슈머가 먼저 메시지를
+        // 처리해버려 매칭을 영원히 놓치는 경쟁을 막기 위해 여기서도 동일하게 즉시 갱신한다.
+        subscriptionCache.refresh()
 
         val link = "https://news.example.com/${System.nanoTime()}"
         val message = NewsRawMessage(
@@ -86,6 +95,7 @@ class NewsMatchingPipelineIntegrationTest : IntegrationTestBase() {
         val keyword = "무관테스트${System.nanoTime()}"
         val user = userRepository.save(User(email = "nomatch-${System.nanoTime()}@example.com", isMember = true))
         subscriptionRepository.save(Subscription(user = user, keyword = keyword, type = SubscriptionType.KEYWORD))
+        subscriptionCache.refresh()
 
         val link = "https://news.example.com/nomatch-${System.nanoTime()}"
         val message = NewsRawMessage(

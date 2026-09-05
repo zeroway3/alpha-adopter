@@ -13,6 +13,7 @@ import com.alphaadopter.core.domain.user.UserRepository
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.kafka.core.KafkaTemplate
+import org.springframework.test.context.TestPropertySource
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -20,6 +21,12 @@ import kotlin.test.assertTrue
 // 로드맵 2단계(뉴스 수집 파이프라인)의 핵심 흐름 — news.raw 발행 -> MongoDB 원본 저장 ->
 // 구독 매칭 -> Notification(MATCHED) 생성 -- 을 지금까지 유닛테스트가 하나도 커버하지
 // 않고 있었다. 실제 Kafka/Postgres/MongoDB 컨테이너를 띄워 엔드투엔드로 검증한다.
+//
+// AI 관련도 필터는 별도로 ClaudeRelevanceClientTest에서 검증하므로, 이 테스트는 항상
+// AI 비활성화 상태로 고정한다 — 로컬에 ANTHROPIC_API_KEY가 export돼 있으면 이 테스트의
+// 합성 문구("~에 대한 상세 내용입니다")를 실제 Claude가 낮게 평가해 매칭이 걸러지는 것을
+// 실제로 겪었다. 문자열 매칭 파이프라인 자체는 개발자 환경변수와 무관하게 결정론적이어야 한다.
+@TestPropertySource(properties = ["app.ai.anthropic-api-key="])
 class NewsMatchingPipelineIntegrationTest : IntegrationTestBase() {
 
     @Autowired

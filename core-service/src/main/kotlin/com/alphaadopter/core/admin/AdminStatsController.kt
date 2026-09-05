@@ -1,5 +1,6 @@
 package com.alphaadopter.core.admin
 
+import com.alphaadopter.core.ai.ClaudeRelevanceClient
 import com.alphaadopter.core.auth.AuthPrincipal
 import com.alphaadopter.core.domain.news.NewsArticleRepository
 import com.alphaadopter.core.domain.notification.DailyNotificationCount
@@ -33,6 +34,7 @@ data class AdminNotificationSummary(
     val createdAt: Instant,
     val readAt: Instant?,
     val clickedAt: Instant?,
+    val relevanceScore: Int?,
 ) {
     companion object {
         fun from(n: Notification) = AdminNotificationSummary(
@@ -44,6 +46,7 @@ data class AdminNotificationSummary(
             createdAt = n.createdAt,
             readAt = n.readAt,
             clickedAt = n.clickedAt,
+            relevanceScore = n.relevanceScore,
         )
     }
 }
@@ -57,6 +60,9 @@ data class AdminStatsResponse(
     val notificationsFailed: Long,
     val notificationsRead: Long,
     val notificationsClicked: Long,
+    val aiFilterEnabled: Boolean,
+    val notificationsAiScored: Long,
+    val averageRelevanceScore: Double?,
     val recentNotifications: List<AdminNotificationSummary>,
 )
 
@@ -100,6 +106,7 @@ class AdminStatsController(
     private val newsArticleRepository: NewsArticleRepository,
     private val notificationRepository: NotificationRepository,
     private val adminEmailChecker: AdminEmailChecker,
+    private val claudeRelevanceClient: ClaudeRelevanceClient,
 ) {
 
     @GetMapping("/stats")
@@ -116,6 +123,9 @@ class AdminStatsController(
             notificationsFailed = notificationRepository.countByStatus(NotificationStatus.FAILED),
             notificationsRead = notificationRepository.countByReadAtIsNotNull(),
             notificationsClicked = notificationRepository.countByClickedAtIsNotNull(),
+            aiFilterEnabled = claudeRelevanceClient.isConfigured,
+            notificationsAiScored = notificationRepository.countByRelevanceScoreIsNotNull(),
+            averageRelevanceScore = notificationRepository.averageRelevanceScore(),
             recentNotifications = notificationRepository.findTop20ByOrderByCreatedAtDesc()
                 .map(AdminNotificationSummary::from),
         )

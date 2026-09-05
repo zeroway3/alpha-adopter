@@ -59,7 +59,7 @@ variable "node_instance_type" {
 }
 
 variable "node_desired_size" {
-  description = "워커 노드 기본 개수 (실측 부하테스트에서 t3.small 2대로는 Kafka+Mongo+core-service를 동시에 감당 못해 메모리 압박이 발생함을 확인, 3대로 조정)"
+  description = "워커 노드 기본 개수 (실측 부하테스트에서 t3.small 2대로는 Kafka+Mongo+core-service를 동시에 감당 못해 메모리 압박이 발생함을 확인, 3대로 조정. 이후 관측성 스택(Prometheus+Grafana) 추가로 메모리 여유가 더 필요해져 4대로 조정)"
   type        = number
-  default     = 3
+  default     = 4
 }

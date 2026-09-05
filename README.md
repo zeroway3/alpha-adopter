@@ -55,7 +55,7 @@
 | 캐시 | Redis (AWS ElastiCache) | |
 | 배포 | AWS EKS (Helm, HPA) | |
 | IaC | Terraform | |
-| 관측성 | Prometheus, Grafana, OpenTelemetry | |
+| 관측성 | Prometheus, Grafana (Micrometer) | 분산 트레이싱(OpenTelemetry)은 현재 범위 밖 — 향후 과제 |
 | 부하테스트 | k6 | |
 
 ## 프로젝트 구조
@@ -65,7 +65,12 @@ alpha-adopter/
 ├── docker-compose.yml          # 로컬 개발용 PostgreSQL·MongoDB·Kafka
 ├── docs/                       # 검증 결과·설계 기록
 │   ├── phase0-news-source-validation.md
+│   ├── phase5-load-test-observability.md
 │   └── future-ideas.md
+├── infra/
+│   ├── terraform/               # AWS 인프라(VPC/RDS/ElastiCache/EKS/CI·CD용 IAM) IaC
+│   └── k8s/                     # core-service/Kafka(Strimzi)/MongoDB/모니터링 매니페스트
+├── loadtest/                    # k6 부하테스트 시나리오
 └── core-service/                # 핵심 백엔드 서비스 (Kotlin + Spring Boot)
     └── src/main/kotlin/com/alphaadopter/core/
         ├── domain/              # User, Subscription, NewsArticle, Notification
@@ -114,7 +119,7 @@ cd core-service
 - [x] 2단계 — 뉴스 수집 파이프라인 (Kafka + MongoDB + 매칭 엔진) — 스케줄러 수집 → news.raw → MongoDB 원본 저장 → 구독 매칭 → news.matched 발행까지 구현
 - [x] 3단계 — 실시간 알림 전달 (SSE/WebSocket + Redis) — news.matched 컨슈머 → Redis Pub/Sub → 인스턴스별 SSE 커넥션으로 전달, 하트비트로 유휴 커넥션 방지
 - [x] 4단계 — AWS 인프라 전환 (RDS, ElastiCache, EKS, Terraform) — VPC/RDS/ElastiCache/EKS Terraform으로 구성, core-service+Kafka(Strimzi)+MongoDB를 EKS에 배포, HPA 적용, GitHub Actions(OIDC) CI/CD로 자동 배포
-- [ ] 5단계 — 실측 부하테스트 및 관측성 구축
+- [x] 5단계 — 실측 부하테스트 및 관측성 구축 — Prometheus+Grafana(kube-prometheus-stack)로 관측성 구축, k6로 구독 API 부하테스트 실시 ([결과](docs/phase5-load-test-observability.md))
 
 ## 참고
 

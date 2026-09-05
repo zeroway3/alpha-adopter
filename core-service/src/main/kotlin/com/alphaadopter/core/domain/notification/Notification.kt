@@ -48,4 +48,8 @@ class Notification(
     // 참여도 추적용 (docs/future-ideas.md 개인화 필터링 아이디어 참고). 스코어링/필터링 로직은 아직 없고 데이터만 쌓는다.
     var readAt: Instant? = null
     var clickedAt: Instant? = null
+
+    // Claude가 판단한 키워드-기사 관련도(0~100). AI 비활성화(ANTHROPIC_API_KEY 없음)나
+    // 판단 실패 시 null — 이 경우 키워드 문자열 매칭 결과를 그대로 신뢰한다 (fail-open)
+    var relevanceScore: Int? = null
 }

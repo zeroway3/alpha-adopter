@@ -31,6 +31,11 @@ interface NotificationRepository : JpaRepository<Notification, Long> {
 
     fun countByClickedAtIsNotNull(): Long
 
+    fun countByRelevanceScoreIsNotNull(): Long
+
+    @Query("SELECT AVG(n.relevanceScore) FROM Notification n WHERE n.relevanceScore IS NOT NULL")
+    fun averageRelevanceScore(): Double?
+
     // 관리자 화면 모니터링용 최근 N일 알림 발생 추이. DB에 종속적인 date_trunc를 쓰지만,
     // 이 프로젝트는 PostgreSQL(RDS)만 대상으로 하므로 문제 없음
     @Query(

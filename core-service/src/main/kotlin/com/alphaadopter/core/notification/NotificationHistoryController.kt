@@ -20,6 +20,8 @@ data class NotificationHistoryItem(
     val sentAt: Instant?,
     val readAt: Instant?,
     val clickedAt: Instant?,
+    // Claude 관련도 점수(0~100). AI 필터 비활성화/실패 시 null
+    val relevanceScore: Int?,
 ) {
     companion object {
         fun from(n: Notification) = NotificationHistoryItem(
@@ -32,6 +34,7 @@ data class NotificationHistoryItem(
             sentAt = n.sentAt,
             readAt = n.readAt,
             clickedAt = n.clickedAt,
+            relevanceScore = n.relevanceScore,
         )
     }
 }

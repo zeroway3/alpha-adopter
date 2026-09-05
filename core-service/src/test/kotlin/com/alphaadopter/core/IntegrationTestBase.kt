@@ -29,6 +29,12 @@ abstract class IntegrationTestBase {
         val redis: GenericContainer<*> =
             GenericContainer(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379).apply { start() }
 
+        // DailyDigestScheduler가 실제로 JavaMailSender.send()를 호출하므로, SMTP 서버가
+        // 없으면 발송 실패로 처리되어(재시도 로직 때문에 SENT로 안 바뀜) 테스트가 깨진다.
+        // docker-compose에서 쓰는 것과 동일한 Mailpit을 띄운다.
+        val mailpit: GenericContainer<*> =
+            GenericContainer(DockerImageName.parse("axllent/mailpit:latest")).withExposedPorts(1025, 8025).apply { start() }
+
         @DynamicPropertySource
         @JvmStatic
         fun registerProperties(registry: DynamicPropertyRegistry) {
@@ -41,6 +47,8 @@ abstract class IntegrationTestBase {
             registry.add("spring.mongodb.uri") { "mongodb://${mongo.host}:${mongo.getMappedPort(27017)}/alpha_adopter" }
             registry.add("spring.data.redis.host", redis::getHost)
             registry.add("spring.data.redis.port") { redis.getMappedPort(6379) }
+            registry.add("spring.mail.host", mailpit::getHost)
+            registry.add("spring.mail.port") { mailpit.getMappedPort(1025) }
         }
     }
 }

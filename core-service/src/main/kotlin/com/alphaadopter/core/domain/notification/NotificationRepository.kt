@@ -10,4 +10,14 @@ interface NotificationRepository : JpaRepository<Notification, Long> {
             "WHERE n.status = :status AND n.subscription.user.isMember = :isMember",
     )
     fun findAllByStatusAndSubscriptionUserIsMember(status: NotificationStatus, isMember: Boolean): List<Notification>
+
+    fun findAllBySubscriptionUserEmailOrderByCreatedAtDesc(email: String): List<Notification>
+
+    fun findTop20ByOrderByCreatedAtDesc(): List<Notification>
+
+    fun countByStatus(status: NotificationStatus): Long
+
+    fun countByReadAtIsNotNull(): Long
+
+    fun countByClickedAtIsNotNull(): Long
 }

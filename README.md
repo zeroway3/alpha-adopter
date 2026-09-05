@@ -5,8 +5,6 @@
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
 
-백엔드 API 서버(REST + SSE)만 구현된 상태이며, 브라우저에서 쓰는 프론트엔드는 별도 범위입니다.
-
 ## 왜 만드는가
 
 정보가 넘치는 시대일수록, "내가 원하는 정보를 얼마나 빠르게 받아보는가"가 중요해지고 있습니다. AlphaAdopter는 사용자가 등록한 키워드/관심 종목과 관련된 뉴스가 발생하면, 노이즈를 걸러내고 실시간으로 알림을 전달하는 서비스입니다.

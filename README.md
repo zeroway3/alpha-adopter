@@ -13,7 +13,7 @@
 
 - 키워드/관심 종목 구독 등록·조회·삭제
 - 뉴스 소스 실시간 수집 (NAVER API HUB)
-- 구독 키워드 기반 매칭 및 알림 발행
+- 구독 키워드 기반 매칭 + Claude(Haiku)를 이용한 AI 관련도 판단으로 노이즈 필터링 ([실측 결과](docs/phase6-ai-relevance-filtering.md): 실제 수집 데이터 기준 노이즈 60% 감소)
 - 관련 뉴스 발생 시 실시간 알림 전달 (SSE + Redis Pub/Sub)
 - 비회원은 일일 다이제스트 이메일, 회원은 실시간 SSE로 차등 전달 (가입 시 기본 회원 처리라 현재는 사실상 전원 실시간 수신, 비회원 등급은 결제 연동 시 재도입 예정)
 - 알림 읽음/클릭 참여도 추적 (향후 개인화 필터링을 위한 데이터 수집 단계, [future-ideas](docs/future-ideas.md) 참고)
@@ -21,7 +21,7 @@
 - 최소한의 웹 프런트엔드 (`core-service`가 정적 리소스로 직접 서빙, 별도 빌드/배포 파이프라인 없음): 회원가입/로그인, 구독 관리, 실시간 알림 피드, 알림 히스토리
 - 관리자 화면: `app.admin.emails` 화이트리스트에 등록된 이메일로 로그인하면 전체 사용자/구독/키워드 통계, 최근 7일 알림 추이, 최근 알림 목록을 볼 수 있음 (로그인은 JWT로 하지만 "관리자 역할" 자체는 별도 Role 테이블 없이 배포 환경변수로만 판단)
 
-투자 조언·매매 시그널 등 자본시장법상 유사투자자문업으로 해석될 수 있는 기능은 스코프에서 명시적으로 제외합니다. 뉴스 원문 전체를 저장·재배포하지 않고 제목·요약·링크 위주로 다뤄 저작권 이슈를 피합니다. 현재 매칭은 키워드 문자열 포함 여부 기반이며, AI 기반 관련도 판단·노이즈 필터링은 아직 구현 전입니다.
+투자 조언·매매 시그널 등 자본시장법상 유사투자자문업으로 해석될 수 있는 기능은 스코프에서 명시적으로 제외합니다. 뉴스 원문 전체를 저장·재배포하지 않고 제목·요약·링크 위주로 다뤄 저작권 이슈를 피합니다. `ANTHROPIC_API_KEY`가 없는 환경(예: 기여자 로컬)에서는 AI 필터가 자동으로 비활성화되고 기존 키워드 문자열 매칭 결과를 그대로 신뢰합니다.
 
 ## 아키텍처
 
@@ -33,7 +33,7 @@
                                           │
                                           ▼
                               [매칭 엔진: Spring Boot + JPA]
-                              (구독 키워드 ↔ 뉴스, 문자열 매칭)
+                              (구독 키워드 ↔ 뉴스, 문자열 매칭 + Claude 관련도 판단)
                                           │
                                           ▼
                               Kafka(news.matched)
@@ -60,6 +60,7 @@
 | 관측성 | Prometheus, Grafana (Micrometer) | 분산 트레이싱(OpenTelemetry)은 현재 범위 밖 — 향후 과제 |
 | 부하테스트 | k6 | |
 | 인증 | Spring Security + JWT | 세션/쿠키 없는 stateless API, 관리자 역할은 별도 Role 테이블 없이 이메일 화이트리스트로 판단 |
+| AI | Claude Haiku (Anthropic API) | 키워드 문자열 매칭 위에 얹는 2차 관련도 필터. API 키 없으면 자동 비활성화 |
 
 ## 프로젝트 구조
 
@@ -69,6 +70,7 @@ alpha-adopter/
 ├── docs/                       # 검증 결과·설계 기록
 │   ├── phase0-news-source-validation.md
 │   ├── phase5-load-test-observability.md
+│   ├── phase6-ai-relevance-filtering.md
 │   └── future-ideas.md
 ├── infra/
 │   ├── terraform/               # AWS 인프라(VPC/RDS/ElastiCache/EKS/CI·CD용 IAM) IaC
@@ -80,6 +82,7 @@ alpha-adopter/
         │   ├── domain/          # User, Subscription, NewsArticle, Notification
         │   ├── collector/       # NAVER 뉴스 수집 (NaverNewsClient, 스케줄러)
         │   ├── pipeline/        # Kafka 컨슈머, MongoDB 원본 저장, 매칭 엔진
+        │   ├── ai/              # Claude 기반 관련도 판단 (2차 노이즈 필터)
         │   ├── notification/    # 실시간 알림 전달(SSE + Redis Pub/Sub), 일일 다이제스트 이메일, 읽음/클릭 참여도 추적, 알림 히스토리 조회
         │   ├── subscription/    # 구독 등록/조회/삭제 REST API (JWT 인증, NAVER API 할당량 보호를 위한 신규 키워드 총량 제한)
         │   ├── auth/            # 회원가입/로그인(JWT 발급), Spring Security 설정, JWT 인증 필터
@@ -98,6 +101,10 @@ docker compose up -d
 # 2. NAVER API HUB 인증정보 등록 (Client ID/Secret은 콘솔에서 발급)
 export NAVER_CLIENT_ID=발급받은_CLIENT_ID
 export NAVER_CLIENT_SECRET=발급받은_CLIENT_SECRET
+
+# (선택) AI 관련도 필터를 쓰려면 Anthropic API 키 등록 — 없으면 자동 비활성화되고
+# 문자열 매칭 결과를 그대로 신뢰하므로 기여자 전원이 가질 필요는 없음
+export ANTHROPIC_API_KEY=발급받은_API_KEY
 
 # 3. core-service 실행
 cd core-service
@@ -127,6 +134,7 @@ cd core-service
 - [x] 3단계 — 실시간 알림 전달 (SSE + Redis) — news.matched 컨슈머 → Redis Pub/Sub → 인스턴스별 SSE 커넥션으로 전달, 하트비트로 유휴 커넥션 방지
 - [x] 4단계 — AWS 인프라 전환 (RDS, ElastiCache, EKS, Terraform) — VPC/RDS/ElastiCache/EKS Terraform으로 구성, core-service+Kafka(Strimzi)+MongoDB를 EKS에 배포, HPA 적용, GitHub Actions(OIDC) CI/CD로 자동 배포
 - [x] 5단계 — 실측 부하테스트 및 관측성 구축 — Prometheus+Grafana(kube-prometheus-stack)로 관측성 구축, k6로 구독 API 부하테스트 실시 ([결과](docs/phase5-load-test-observability.md))
+- [x] 6단계 — AI 기반 관련도 판단 — Claude Haiku로 문자열 매칭 위 2차 노이즈 필터링, 실제 수집 데이터로 노이즈 60% 감소 실측 ([결과](docs/phase6-ai-relevance-filtering.md))
 
 ## 참고
 

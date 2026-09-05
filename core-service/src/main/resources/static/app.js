@@ -51,6 +51,16 @@ function statusTag(status) {
   return el("span", { className: "badge " + (map[status] || "badge-default"), text: status });
 }
 
+// Claude가 판단한 관련도 점수. AI 필터가 비활성화됐거나(키 없음) 판단 실패 시 null이라
+// "판단 안 함"으로 표시한다 — 0점(무관)과 혼동되지 않게
+function relevanceBadge(score) {
+  if (score === null || score === undefined) {
+    return el("span", { className: "badge badge-default", text: "미판단" });
+  }
+  const variant = score >= 70 ? "badge-success" : score >= 50 ? "badge-warning" : "badge-danger";
+  return el("span", { className: "badge " + variant, text: score + "점" });
+}
+
 async function authFetch(path, options = {}) {
   const session = getSession();
   const headers = Object.assign({}, options.headers || {});
@@ -178,6 +188,7 @@ function renderHistory(items) {
         children: [
           el("td", { text: n.keyword }),
           el("td", { children: [linkEl(n.articleLink, n.articleTitle)] }),
+          el("td", { children: [relevanceBadge(n.relevanceScore)] }),
           el("td", { children: [statusTag(n.status)] }),
           el("td", { text: formatTime(n.createdAt) }),
           el("td", { text: formatTime(n.readAt) }),
@@ -220,6 +231,18 @@ function renderStatGrid(stats) {
     ["✅", "emerald", "매칭됨", stats.notificationsMatched],
     ["📤", "amber", "전송됨", stats.notificationsSent],
     ["⚠️", "rose", "실패", stats.notificationsFailed],
+    [
+      "🤖",
+      stats.aiFilterEnabled ? "emerald" : "rose",
+      "AI 필터",
+      stats.aiFilterEnabled ? "ON" : "OFF",
+    ],
+    [
+      "📊",
+      "cyan",
+      "평균 관련도",
+      stats.averageRelevanceScore != null ? Math.round(stats.averageRelevanceScore) + "점" : "-",
+    ],
   ];
   grid.innerHTML = "";
   boxes.forEach(([icon, color, label, value]) => {
@@ -305,6 +328,7 @@ function renderAdminRecent(items) {
           el("td", { text: n.userEmail }),
           el("td", { text: n.keyword }),
           el("td", { text: n.articleTitle }),
+          el("td", { children: [relevanceBadge(n.relevanceScore)] }),
           el("td", { children: [statusTag(n.status)] }),
           el("td", { text: formatTime(n.createdAt) }),
         ],

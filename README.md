@@ -161,6 +161,3 @@ cd ../core-service
 
 전체 진행 과정과 각 단계에서 실제로 겪은 문제·해결 방법은 [`docs/project-story.md`](docs/project-story.md)에 상세히 정리돼 있습니다.
 
-## 참고
-
-컨셉 검증은 이미 완료된 상태입니다. 이전에 Python 기반 프로토타입(`stock-alert`)으로 "뉴스 감지 → AI 중요도 스코어링 → 알림 전달" 흐름 자체는 동작을 확인했고, 이번 프로젝트는 그 컨셉을 Kotlin·Spring·Kafka·AWS 기반으로 서비스 규모에 맞게 재설계·구현하는 것이 목표입니다.

@@ -10,6 +10,7 @@ import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
@@ -21,8 +22,19 @@ enum class NotificationStatus {
     FAILED,
 }
 
+// status/created_at: countByStatus, findTop20ByOrderByCreatedAtDesc, 관리자 대시보드의 일별 집계
+// 네이티브 쿼리가 필터링/정렬에 사용. subscription_id/news_article_id: Postgres는 FK 컬럼을
+// 자동으로 인덱싱하지 않는데, findAllBySubscriptionUserId...가 subscription을 조인한다.
 @Entity
-@Table(name = "notifications")
+@Table(
+    name = "notifications",
+    indexes = [
+        Index(name = "idx_notifications_status", columnList = "status"),
+        Index(name = "idx_notifications_created_at", columnList = "created_at"),
+        Index(name = "idx_notifications_subscription_id", columnList = "subscription_id"),
+        Index(name = "idx_notifications_news_article_id", columnList = "news_article_id"),
+    ],
+)
 class Notification(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subscription_id", nullable = false)

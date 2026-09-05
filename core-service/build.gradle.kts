@@ -43,6 +43,15 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	// 로컬에 이미 떠 있는 docker-compose 인프라에 암묵적으로 의존하던 기존 테스트 방식 대신,
+	// Testcontainers로 매 실행마다 격리된 인프라를 띄워 CI에서도 그대로 재현 가능하게 한다
+	testImplementation("org.springframework.boot:spring-boot-testcontainers")
+	// testcontainers 2.x부터 모듈 아티팩트명이 testcontainers-<module>로 바뀌었다
+	// (예: postgresql -> testcontainers-postgresql). Boot 4.1.1이 관리하는 버전은 2.0.5
+	testImplementation("org.testcontainers:testcontainers-junit-jupiter:2.0.5")
+	testImplementation("org.testcontainers:testcontainers-postgresql:2.0.5")
+	testImplementation("org.testcontainers:testcontainers-kafka:2.0.5")
+	testImplementation("org.testcontainers:testcontainers-mongodb:2.0.5")
 }
 
 kotlin {

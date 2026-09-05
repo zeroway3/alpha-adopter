@@ -47,8 +47,8 @@ function linkEl(href, text) {
 }
 
 function statusTag(status) {
-  const map = { MATCHED: "matched", SENT: "sent", FAILED: "failed" };
-  return el("span", { className: "tag-pill " + (map[status] || ""), text: status });
+  const map = { MATCHED: "badge-primary", SENT: "badge-success", FAILED: "badge-danger" };
+  return el("span", { className: "badge " + (map[status] || "badge-default"), text: status });
 }
 
 async function authFetch(path, options = {}) {
@@ -141,18 +141,22 @@ function renderSubscriptions(subs) {
   const list = document.getElementById("subscription-list");
   list.innerHTML = "";
   if (subs.length === 0) {
-    list.appendChild(el("li", { className: "empty-note", text: "아직 구독한 키워드가 없습니다." }));
+    const empty = el("li", { text: "아직 구독한 키워드가 없습니다." });
+    empty.style.color = "var(--gray-400)";
+    empty.style.fontSize = "0.85rem";
+    list.appendChild(empty);
     return;
   }
   subs.forEach((s) => {
-    const removeBtn = el("button", { className: "remove-btn", text: "해제" });
+    const removeBtn = el("button", { className: "btn btn-ghost btn-sm", text: "해제" });
+    removeBtn.style.color = "var(--rose-600)";
     removeBtn.addEventListener("click", async () => {
       await deleteSubscription(s.id);
       renderSubscriptions(await loadSubscriptions());
     });
-    list.appendChild(
-      el("li", { children: [el("span", { text: s.keyword + " (" + s.type + ")" }), removeBtn] }),
-    );
+    const keywordSpan = el("span", { text: s.keyword + " " });
+    keywordSpan.appendChild(el("span", { className: "badge badge-default", text: s.type }));
+    list.appendChild(el("li", { children: [keywordSpan, removeBtn] }));
   });
 }
 
@@ -160,7 +164,12 @@ function renderHistory(items) {
   const body = document.getElementById("history-body");
   body.innerHTML = "";
   if (items.length === 0) {
-    body.appendChild(el("tr", { children: [el("td", { text: "아직 받은 알림이 없습니다.", className: "empty-note" })] }));
+    const td = el("td", { text: "아직 받은 알림이 없습니다." });
+    td.colSpan = 6;
+    td.style.textAlign = "center";
+    td.style.color = "var(--gray-400)";
+    td.style.padding = "2rem 1rem";
+    body.appendChild(el("tr", { children: [td] }));
     return;
   }
   items.forEach((n) => {
@@ -187,40 +196,39 @@ function prependLiveNotification(matched) {
   feed.prepend(li);
 }
 
+function setStatusPill(pillEl, up, upLabel, downLabel) {
+  pillEl.classList.toggle("status-up", up);
+  pillEl.classList.toggle("status-down", !up);
+  pillEl.querySelector(".status-text").textContent = up ? upLabel : downLabel;
+}
+
 function connectSse(token) {
   if (eventSource) eventSource.close();
   const statusEl = document.getElementById("sse-status");
-  const dot = statusEl.querySelector(".status-dot");
   eventSource = new EventSource("/api/notifications/stream?token=" + encodeURIComponent(token));
-  eventSource.onopen = () => {
-    statusEl.lastChild.textContent = "연결됨";
-    dot.className = "status-dot up";
-  };
-  eventSource.onerror = () => {
-    statusEl.lastChild.textContent = "연결 끊김 (재시도 중...)";
-    dot.className = "status-dot down";
-  };
+  eventSource.onopen = () => setStatusPill(statusEl, true, "연결됨", "");
+  eventSource.onerror = () => setStatusPill(statusEl, false, "", "연결 끊김 (재시도 중...)");
   eventSource.addEventListener("news-matched", (event) => prependLiveNotification(JSON.parse(event.data)));
 }
 
 function renderStatGrid(stats) {
   const grid = document.getElementById("stat-grid");
   const boxes = [
-    ["👥", "accent-blue", "전체 사용자", stats.totalUsers],
-    ["🔎", "accent-violet", "전체 구독", stats.totalSubscriptions],
-    ["📰", "accent-cyan", "수집된 뉴스", stats.totalNewsArticles],
-    ["✅", "accent-emerald", "매칭됨", stats.notificationsMatched],
-    ["📤", "accent-amber", "전송됨", stats.notificationsSent],
-    ["⚠️", "accent-rose", "실패", stats.notificationsFailed],
+    ["👥", "blue", "전체 사용자", stats.totalUsers],
+    ["🔎", "violet", "전체 구독", stats.totalSubscriptions],
+    ["📰", "cyan", "수집된 뉴스", stats.totalNewsArticles],
+    ["✅", "emerald", "매칭됨", stats.notificationsMatched],
+    ["📤", "amber", "전송됨", stats.notificationsSent],
+    ["⚠️", "rose", "실패", stats.notificationsFailed],
   ];
   grid.innerHTML = "";
-  boxes.forEach(([icon, accent, label, value]) => {
+  boxes.forEach(([icon, color, label, value]) => {
     grid.appendChild(
       el("div", {
-        className: "stat-box",
+        className: "stat-card",
         children: [
-          el("span", { className: "icon-badge " + accent, text: icon }),
-          el("div", { children: [el("div", { className: "value", text: String(value) }), el("div", { className: "label", text: label })] }),
+          el("span", { className: "stat-icon-box icon-" + color, text: icon }),
+          el("div", { children: [el("div", { className: "stat-value", text: String(value) }), el("div", { className: "stat-label", text: label })] }),
         ],
       }),
     );
@@ -231,7 +239,10 @@ function renderDailyChart(days) {
   const wrap = document.getElementById("daily-chart");
   wrap.innerHTML = "";
   if (days.length === 0) {
-    wrap.appendChild(el("p", { className: "empty-note", text: "최근 7일간 데이터가 없습니다." }));
+    const p = el("p", { text: "최근 7일간 데이터가 없습니다." });
+    p.style.color = "var(--gray-400)";
+    p.style.fontSize = "0.85rem";
+    wrap.appendChild(p);
     return;
   }
   const max = Math.max(...days.map((d) => d.total), 1);
@@ -253,7 +264,12 @@ function renderKeywords(keywords) {
   const body = document.getElementById("keywords-body");
   body.innerHTML = "";
   if (keywords.length === 0) {
-    body.appendChild(el("tr", { children: [el("td", { text: "데이터가 없습니다.", className: "empty-note" })] }));
+    const td = el("td", { text: "데이터가 없습니다." });
+    td.colSpan = 2;
+    td.style.textAlign = "center";
+    td.style.color = "var(--gray-400)";
+    td.style.padding = "2rem 1rem";
+    body.appendChild(el("tr", { children: [td] }));
     return;
   }
   keywords.forEach((k) => {
@@ -320,16 +336,12 @@ function startAdminClock() {
 
 function startServerStatusPoll() {
   const statusEl = document.getElementById("server-status");
-  const dot = statusEl.querySelector(".status-dot");
   const check = async () => {
     try {
       const res = await fetch("/actuator/health");
-      const ok = res.ok;
-      dot.className = "status-dot " + (ok ? "up" : "down");
-      statusEl.lastChild.textContent = ok ? "정상" : "오류";
+      setStatusPill(statusEl, res.ok, "정상", "오류");
     } catch {
-      dot.className = "status-dot down";
-      statusEl.lastChild.textContent = "오류";
+      setStatusPill(statusEl, false, "", "오류");
     }
   };
   check();

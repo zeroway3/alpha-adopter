@@ -46,6 +46,10 @@ jobs:
 
   deploy:
     needs: test
+    # AWS 인프라(EKS/ECR)를 비용 관리를 위해 terraform destroy로 종료해둔 상태라, main에
+    # push될 때마다 자동으로 이 job이 실패로 남는 걸 막기 위해 수동 실행(workflow_dispatch)
+    # 때만 돌도록 제한한다. 인프라를 terraform apply로 다시 올리면 이 조건을 지워도 된다.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -1,12 +1,9 @@
 package com.alphaadopter.core.admin
 
-import com.alphaadopter.core.ai.ClaudeRelevanceClient
 import com.alphaadopter.core.auth.AuthPrincipal
-import com.alphaadopter.core.domain.news.NewsArticleRepository
 import com.alphaadopter.core.domain.notification.DailyNotificationCount
 import com.alphaadopter.core.domain.notification.Notification
 import com.alphaadopter.core.domain.notification.NotificationRepository
-import com.alphaadopter.core.domain.notification.NotificationStatus
 import com.alphaadopter.core.domain.subscription.SubscriptionRepository
 import com.alphaadopter.core.domain.user.User
 import com.alphaadopter.core.domain.user.UserRepository
@@ -15,7 +12,6 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -103,32 +99,16 @@ data class AdminDailyCount(val day: LocalDate, val total: Long) {
 class AdminStatsController(
     private val userRepository: UserRepository,
     private val subscriptionRepository: SubscriptionRepository,
-    private val newsArticleRepository: NewsArticleRepository,
     private val notificationRepository: NotificationRepository,
     private val adminEmailChecker: AdminEmailChecker,
-    private val claudeRelevanceClient: ClaudeRelevanceClient,
+    private val adminStatsService: AdminStatsService,
 ) {
 
     @GetMapping("/stats")
-    @Transactional(readOnly = true)
     fun stats(@AuthenticationPrincipal principal: AuthPrincipal): AdminStatsResponse {
+        // 접근 제어는 반드시 캐시 조회보다 먼저. 집계 자체는 AdminStatsService가 Redis에 TTL 캐싱한다.
         requireAdmin(principal)
-
-        return AdminStatsResponse(
-            totalUsers = userRepository.count(),
-            totalSubscriptions = subscriptionRepository.count(),
-            totalNewsArticles = newsArticleRepository.count(),
-            notificationsMatched = notificationRepository.countByStatus(NotificationStatus.MATCHED),
-            notificationsSent = notificationRepository.countByStatus(NotificationStatus.SENT),
-            notificationsFailed = notificationRepository.countByStatus(NotificationStatus.FAILED),
-            notificationsRead = notificationRepository.countByReadAtIsNotNull(),
-            notificationsClicked = notificationRepository.countByClickedAtIsNotNull(),
-            aiFilterEnabled = claudeRelevanceClient.isConfigured,
-            notificationsAiScored = notificationRepository.countByRelevanceScoreIsNotNull(),
-            averageRelevanceScore = notificationRepository.averageRelevanceScore(),
-            recentNotifications = notificationRepository.findTop20ByOrderByCreatedAtDesc()
-                .map(AdminNotificationSummary::from),
-        )
+        return adminStatsService.snapshot()
     }
 
     @GetMapping("/users")

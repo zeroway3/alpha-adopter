@@ -3,7 +3,7 @@ import type {
   AdminKeywordSummary,
   AdminStatsResponse,
   AdminUserSummary,
-  NotificationHistoryItem,
+  NotificationHistoryPage,
   Session,
   Subscription,
   SubscriptionType,
@@ -101,8 +101,12 @@ export async function markNotificationRead(notificationId: number): Promise<void
   await authFetch(`/api/notifications/${notificationId}/read`, { method: "POST" });
 }
 
-export async function loadHistory(): Promise<NotificationHistoryItem[]> {
-  const res = await authFetch("/api/notifications");
+// cursor를 넘기면 그 지점부터 다음 페이지를 최신순으로 받는다. 첫 페이지는 cursor 생략.
+export async function loadHistory(cursor?: string, limit = 20): Promise<NotificationHistoryPage> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+  const res = await authFetch(`/api/notifications?${params}`);
+  if (!res.ok) throw new Error(await readErrorMessage(res, "알림 히스토리 조회 실패"));
   return res.json();
 }
 

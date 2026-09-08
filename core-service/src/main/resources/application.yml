@@ -86,6 +86,12 @@ app:
     anthropic-api-key: ${ANTHROPIC_API_KEY:}
     model: ${AI_RELEVANCE_MODEL:claude-haiku-4-5-20251001}
     relevance-threshold: ${AI_RELEVANCE_THRESHOLD:50}
+    # (키워드, 제목, 본문) 해시로 점수를 이만큼 Redis에 캐싱한다 — 같은 기사가 여러 구독
+    # 키워드와 동시에 매칭되거나 재처리될 때 동일 호출을 반복하지 않기 위함
+    cache-ttl-hours: ${AI_RELEVANCE_CACHE_TTL_HOURS:24}
+    # Claude API가 429(rate limit)를 반환하면 지수 백오프로 최대 이만큼 재시도한다
+    max-retries: ${AI_RELEVANCE_MAX_RETRIES:3}
+    retry-initial-delay-ms: ${AI_RELEVANCE_RETRY_INITIAL_DELAY_MS:500}
   kafka:
     topic:
       news-raw: news.raw

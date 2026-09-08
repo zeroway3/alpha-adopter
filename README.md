@@ -60,7 +60,7 @@
 | 이벤트 스트리밍 | Kafka (EKS 위 Strimzi Operator) | |
 | 원본 저장 | MongoDB | 소스별 포맷이 달라 스키마 유연성 필요 |
 | 정본 저장 | PostgreSQL (AWS RDS) | HikariCP 풀 튜닝, 핫 컬럼 인덱싱 |
-| 캐시 | Redis (AWS ElastiCache) | SSE Pub/Sub 브로커로도 사용 |
+| 캐시 | Redis (AWS ElastiCache) | SSE Pub/Sub 브로커 겸 관리자 통계 TTL 캐시 (Spring Cache) |
 | 배포 | AWS EKS (Helm, HPA) | Docker 멀티스테이지 빌드(프론트엔드+백엔드) |
 | IaC | Terraform | |
 | 관측성 | Prometheus, Grafana (Micrometer) | 분산 트레이싱(OpenTelemetry)은 현재 범위 밖 — 향후 과제 |

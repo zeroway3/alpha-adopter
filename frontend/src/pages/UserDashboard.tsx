@@ -35,6 +35,9 @@ interface Props {
 export function UserDashboard({ token, onSessionExpired }: Props) {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [history, setHistory] = useState<NotificationHistoryItem[]>([]);
+  const [historyCursor, setHistoryCursor] = useState<string | null>(null);
+  const [historyHasMore, setHistoryHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [type, setType] = useState<SubscriptionType>("KEYWORD");
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
@@ -61,9 +64,28 @@ export function UserDashboard({ token, onSessionExpired }: Props) {
   }, [withSessionGuard]);
 
   const refreshHistory = useCallback(async () => {
-    const items = await withSessionGuard(api.loadHistory);
-    if (items) setHistory(items);
+    const page = await withSessionGuard(() => api.loadHistory());
+    if (page) {
+      setHistory(page.items);
+      setHistoryCursor(page.nextCursor);
+      setHistoryHasMore(page.hasMore);
+    }
   }, [withSessionGuard]);
+
+  const loadMoreHistory = useCallback(async () => {
+    if (!historyCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await withSessionGuard(() => api.loadHistory(historyCursor));
+      if (page) {
+        setHistory((prev) => [...prev, ...page.items]);
+        setHistoryCursor(page.nextCursor);
+        setHistoryHasMore(page.hasMore);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [historyCursor, loadingMore, withSessionGuard]);
 
   useEffect(() => {
     refreshSubscriptions();
@@ -236,6 +258,13 @@ export function UserDashboard({ token, onSessionExpired }: Props) {
               </tbody>
             </table>
           </div>
+          {historyHasMore && (
+            <div style={{ textAlign: "center", padding: "0.75rem" }}>
+              <button type="button" className="btn btn-outline btn-sm" onClick={loadMoreHistory} disabled={loadingMore}>
+                {loadingMore ? "불러오는 중..." : "더 보기"}
+              </button>
+            </div>
+          )}
         </div>
       </section>
     </main>

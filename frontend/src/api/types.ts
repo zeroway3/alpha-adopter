@@ -32,6 +32,13 @@ export interface NotificationHistoryItem {
   relevanceScore: number | null;
 }
 
+// 커서 기반 페이지네이션 응답. nextCursor가 null이면 마지막 페이지.
+export interface NotificationHistoryPage {
+  items: NotificationHistoryItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
 export interface AdminNotificationSummary {
   id: number;
   userEmail: string;

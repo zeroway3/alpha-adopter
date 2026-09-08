@@ -23,15 +23,17 @@ enum class NotificationStatus {
 }
 
 // status/created_at: countByStatus, findTop20ByOrderByCreatedAtDesc, 관리자 대시보드의 일별 집계
-// 네이티브 쿼리가 필터링/정렬에 사용. subscription_id/news_article_id: Postgres는 FK 컬럼을
-// 자동으로 인덱싱하지 않는데, findAllBySubscriptionUserId...가 subscription을 조인한다.
+// 네이티브 쿼리가 필터링/정렬에 사용. news_article_id: Postgres는 FK 컬럼을 자동으로 인덱싱하지 않는다.
+// (subscription_id, created_at, id): 알림 히스토리 커서 페이지네이션 전용 — 유저의 구독별로
+// (createdAt, id) 정렬·범위 스캔을 인덱스만으로 처리하게 해준다. 단독 subscription_id 인덱스는
+// 이 복합 인덱스의 선두 컬럼으로 커버되므로 별도로 두지 않는다.
 @Entity
 @Table(
     name = "notifications",
     indexes = [
         Index(name = "idx_notifications_status", columnList = "status"),
         Index(name = "idx_notifications_created_at", columnList = "created_at"),
-        Index(name = "idx_notifications_subscription_id", columnList = "subscription_id"),
+        Index(name = "idx_notifications_sub_created_id", columnList = "subscription_id, created_at, id"),
         Index(name = "idx_notifications_news_article_id", columnList = "news_article_id"),
     ],
 )

@@ -45,7 +45,16 @@ interface NotificationRepository : JpaRepository<Notification, Long> {
 
     fun findFirstBySubscriptionKeywordAndNewsArticleLink(keyword: String, link: String): Notification?
 
-    fun findTop20ByOrderByCreatedAtDesc(): List<Notification>
+    // 관리자 대시보드 "최근 알림" 목록. 유저 이메일/키워드/기사 제목을 함께 보여주므로 to-one 연관을
+    // JOIN FETCH로 한 번에 읽어 lazy 로딩 N+1을 없앤다. 호출부에서 PageRequest.of(0, N)으로 개수 제한.
+    @Query(
+        "SELECT n FROM Notification n " +
+            "JOIN FETCH n.subscription s " +
+            "JOIN FETCH s.user " +
+            "JOIN FETCH n.newsArticle " +
+            "ORDER BY n.createdAt DESC, n.id DESC",
+    )
+    fun findRecentWithDetails(pageable: Pageable): List<Notification>
 
     fun countByStatus(status: NotificationStatus): Long
 

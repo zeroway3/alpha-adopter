@@ -1,7 +1,12 @@
 package com.alphaadopter.core.ai
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito
+import org.springframework.data.redis.core.StringRedisTemplate
+import org.springframework.data.redis.core.ValueOperations
 import org.springframework.web.client.RestClient
 import tools.jackson.databind.json.JsonMapper
 import tools.jackson.module.kotlin.kotlinModule
@@ -24,10 +29,23 @@ class RelevanceEvalReport {
         val apiKey = System.getenv("ANTHROPIC_API_KEY").orEmpty()
         assumeTrue(apiKey.isNotBlank(), "ANTHROPIC_API_KEY가 없어 스킵합니다")
 
+        // Redis는 항상 캐시 미스로 동작하는 목으로 대체한다 — eval 리포트는 프롬프트를 바꿔가며
+        // 반복 실행하는 도구라, 실제 캐시를 쓰면 이전 실행의 캐시된 점수가 재사용되어 프롬프트
+        // 변경 효과를 측정할 수 없게 된다. 매번 20건 전부 새로 채점하는 게 의도한 동작이다.
+        val redisTemplate = Mockito.mock(StringRedisTemplate::class.java)
+        val redisOps = Mockito.mock(ValueOperations::class.java) as ValueOperations<String, String>
+        Mockito.`when`(redisTemplate.opsForValue()).thenReturn(redisOps)
+        Mockito.`when`(redisOps.get(any())).thenReturn(null)
+
         val client = ClaudeRelevanceClient(
             RestClient.builder(),
+            redisTemplate = redisTemplate,
+            meterRegistry = SimpleMeterRegistry(),
             apiKey = apiKey,
             model = System.getenv("ANTHROPIC_MODEL")?.takeIf { it.isNotBlank() } ?: "claude-haiku-4-5-20251001",
+            cacheTtlHours = 24,
+            maxRetries = 3,
+            retryInitialDelayMs = 500,
         )
 
         val mapper = JsonMapper.builder().addModule(kotlinModule()).build()

@@ -259,7 +259,10 @@ alpha-adopter에 실제로 존재하던 문제 5건을 수정했습니다.
   키셋 커서 기반 페이지네이션으로 전환. `limit+1`건을 읽어 별도 count 쿼리 없이 `hasMore`를
   판정하고, `(subscription_id, created_at, id)` 복합 인덱스를 추가했다. 프런트엔드는 "더 보기"로
   다음 페이지를 이어 받는다.
-- **관리자 통계 캐시 없음**: `/api/admin/stats`가 호출마다 집계 쿼리 8개를 매번 새로 계산.
+- ~~**관리자 통계 캐시 없음**~~: (2026-09-08 해결) `/api/admin/stats` 집계 결과 전체를
+  Spring Cache 추상화 + Redis 백엔드로 TTL(기본 30초) 캐싱. 접근 제어(`requireAdmin`)는
+  캐시 조회보다 앞단(컨트롤러)에 두어 캐시 히트가 인가를 우회하지 못하게 했다. "최근 알림"
+  목록도 `JOIN FETCH`로 바꿔 lazy 로딩 N+1을 제거.
 - **부하테스트가 실제 사용자 트래픽이 아님**: k6로 만든 합성 트래픽이지 실사용자 트래픽으로
   검증한 게 아니라는 점을 분명히 인지.
 
@@ -286,7 +289,7 @@ alpha-adopter에 실제로 존재하던 문제 5건을 수정했습니다.
 ## 11. 남은 과제 (백로그)
 
 - ~~`/api/notifications` 커서 기반 페이지네이션~~ (2026-09-08 완료)
-- `/api/admin/stats` Redis 캐싱 (30~60초 TTL)
+- ~~`/api/admin/stats` Redis 캐싱 (30~60초 TTL)~~ (2026-09-08 완료)
 - Refresh Token 도입, JWT `localStorage` → httpOnly 쿠키 전환 검토
 - Role 기반 인가(RBAC)로 전환
 - Rate limiting (회원가입/로그인/구독 API)

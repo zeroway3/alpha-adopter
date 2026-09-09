@@ -18,7 +18,8 @@
 
 - 키워드/관심 종목 구독 등록·조회·삭제
 - 뉴스 소스 실시간 수집 (NAVER API HUB)
-- 구독 키워드 기반 매칭 + Claude(Haiku)를 이용한 AI 관련도 판단으로 노이즈 필터링 ([실측 결과](docs/phase6-ai-relevance-filtering.md): 실제 수집 데이터 기준 노이즈 60% 감소)
+- 구독 키워드 기반 매칭 + Claude(Haiku)를 이용한 AI 관련도 판단으로 노이즈 필터링. 구조화 출력(tool use)·프롬프트 인젝션 방어·Redis 캐싱·429 재시도·Micrometer 계측까지 갖춘 프로덕션 경화, 라벨링된 eval 데이터셋으로 precision/recall/F1을 실측하고 프롬프트를 개선하는 사이클까지 거침 ([실측 결과](docs/phase6-ai-relevance-filtering.md): 실제 수집 데이터 기준 노이즈 60% 감소, eval 20건 기준 정밀도·재현율·F1 78%→100% 개선)
+- Voyage AI 임베딩으로 같은 사건을 다룬 서로 다른 기사를 코사인 유사도로 감지해 중복 알림·중복 AI 호출 제거 ([설계 기록](docs/phase8-embedding-dedup.md))
 - 관련 뉴스 발생 시 실시간 알림 전달 (SSE + Redis Pub/Sub)
 - 비회원은 일일 다이제스트 이메일, 회원은 실시간 SSE로 차등 전달 (가입 시 기본 회원 처리라 현재는 사실상 전원 실시간 수신, 비회원 등급은 결제 연동 시 재도입 예정)
 - 알림 읽음/클릭 참여도 추적 (향후 개인화 필터링을 위한 데이터 수집 단계, [future-ideas](docs/future-ideas.md) 참고)
@@ -26,7 +27,7 @@
 - React + TypeScript 프론트엔드 (다크 테마, 사이드바/본문 레이아웃): 회원가입/로그인, 구독 관리, 실시간 알림 피드, 알림 히스토리
 - 관리자 화면: `app.admin.emails` 화이트리스트에 등록된 이메일로 로그인하면 전체 사용자/구독/키워드 통계, 최근 7일 알림 추이, 최근 알림 목록을 볼 수 있음 (로그인은 JWT로 하지만 "관리자 역할" 자체는 별도 Role 테이블 없이 배포 환경변수로만 판단)
 
-투자 조언·매매 시그널 등 자본시장법상 유사투자자문업으로 해석될 수 있는 기능은 스코프에서 명시적으로 제외합니다. 뉴스 원문 전체를 저장·재배포하지 않고 제목·요약·링크 위주로 다뤄 저작권 이슈를 피합니다. `ANTHROPIC_API_KEY`가 없는 환경(예: 기여자 로컬)에서는 AI 필터가 자동으로 비활성화되고 기존 키워드 문자열 매칭 결과를 그대로 신뢰합니다.
+투자 조언·매매 시그널 등 자본시장법상 유사투자자문업으로 해석될 수 있는 기능은 스코프에서 명시적으로 제외합니다. 뉴스 원문 전체를 저장·재배포하지 않고 제목·요약·링크 위주로 다뤄 저작권 이슈를 피합니다. `ANTHROPIC_API_KEY`/`VOYAGE_API_KEY`가 없는 환경(예: 기여자 로컬)에서는 AI 필터/중복 제거가 각각 자동으로 비활성화되고 기존 문자열 매칭 결과를 그대로 신뢰합니다(fail-open).
 
 ## 아키텍처
 
@@ -38,7 +39,8 @@
                                           │
                                           ▼
                               [매칭 엔진: Spring Boot + JPA]
-                              (구독 키워드 ↔ 뉴스, 문자열 매칭 + Claude 관련도 판단)
+                    (구독 키워드 ↔ 뉴스, 문자열 매칭 + 임베딩 중복 제거(Voyage)
+                                + Claude 관련도 판단)
                                           │
                                           ▼
                               Kafka(news.matched)
@@ -66,7 +68,8 @@
 | 관측성 | Prometheus, Grafana (Micrometer) | 분산 트레이싱(OpenTelemetry)은 현재 범위 밖 — 향후 과제 |
 | 부하테스트 | k6 | |
 | 인증 | Spring Security + JWT | 세션/쿠키 없는 stateless API, 관리자 역할은 별도 Role 테이블 없이 이메일 화이트리스트로 판단 |
-| AI | Claude Haiku (Anthropic API) | 키워드 문자열 매칭 위에 얹는 2차 관련도 필터. API 키 없으면 자동 비활성화 |
+| AI (관련도 판단) | Claude Haiku (Anthropic API) | 키워드 문자열 매칭 위에 얹는 2차 관련도 필터. tool use 구조화 출력, 프롬프트 인젝션 방어, Redis 캐싱, 429 재시도, Micrometer 계측. API 키 없으면 자동 비활성화 |
+| AI (중복 제거) | Voyage AI (voyage-4-lite) | 기사 임베딩 → 코사인 유사도로 같은 사건의 중복 보도 감지. API 키 없으면 자동 비활성화 |
 | 테스트 | Testcontainers(Kafka/Postgres/Mongo/Redis/Mailpit), vitest | 로컬 인프라 없이 CI에서 실제 컨테이너로 통합테스트 |
 
 ## 프로젝트 구조
@@ -78,7 +81,8 @@ alpha-adopter/
 │   ├── project-story.md         # 프로젝트 전체 진행 과정 총정리 (이력서/면접용)
 │   ├── phase0-news-source-validation.md
 │   ├── phase5-load-test-observability.md
-│   ├── phase6-ai-relevance-filtering.md
+│   ├── phase6-ai-relevance-filtering.md   # Claude 기반 관련도 필터: 구조화 출력·캐싱·재시도·계측·eval 튜닝
+│   ├── phase8-embedding-dedup.md          # Voyage 임베딩 기반 기사 중복 제거
 │   └── future-ideas.md
 ├── infra/
 │   ├── terraform/               # AWS 인프라(VPC/RDS/ElastiCache/EKS/CI·CD용 IAM) IaC
@@ -99,7 +103,7 @@ alpha-adopter/
         │   ├── domain/          # User, Subscription, NewsArticle, Notification
         │   ├── collector/       # NAVER 뉴스 수집 (NaverNewsClient, 스케줄러)
         │   ├── pipeline/        # Kafka 컨슈머, MongoDB 원본 저장, 매칭 엔진, 구독 캐시 기반 매칭
-        │   ├── ai/              # Claude 기반 관련도 판단 (2차 노이즈 필터)
+        │   ├── ai/              # Claude 기반 관련도 판단(2차 노이즈 필터) + Voyage 임베딩 기반 중복 제거
         │   ├── notification/    # 실시간 알림 전달(SSE + Redis Pub/Sub), 일일 다이제스트 이메일, 읽음/클릭 참여도 추적, 알림 히스토리 조회
         │   ├── subscription/    # 구독 등록/조회/삭제 REST API, 메모리 구독 캐시 (SubscriptionCache)
         │   ├── auth/            # 회원가입/로그인(JWT 발급), Spring Security 설정, JWT 인증 필터
@@ -122,6 +126,9 @@ export NAVER_CLIENT_SECRET=발급받은_CLIENT_SECRET
 # (선택) AI 관련도 필터를 쓰려면 Anthropic API 키 등록 — 없으면 자동 비활성화되고
 # 문자열 매칭 결과를 그대로 신뢰하므로 기여자 전원이 가질 필요는 없음
 export ANTHROPIC_API_KEY=발급받은_API_KEY
+
+# (선택) 임베딩 기반 기사 중복 제거를 쓰려면 Voyage AI 키 등록 — 없으면 자동 비활성화
+export VOYAGE_API_KEY=발급받은_API_KEY
 
 # 3. 프론트엔드 빌드 (core-service/src/main/resources/static/으로 직접 출력됨)
 cd frontend
@@ -158,6 +165,7 @@ cd ../core-service
 - [x] 5단계 — 실측 부하테스트 및 관측성 구축 — Prometheus+Grafana(kube-prometheus-stack)로 관측성 구축, k6로 구독 API 부하테스트 실시 ([결과](docs/phase5-load-test-observability.md))
 - [x] 6단계 — 인증 + AI 기반 관련도 판단 — 이메일+비밀번호 JWT 인증 도입, Claude Haiku로 문자열 매칭 위 2차 노이즈 필터링, 실제 수집 데이터로 노이즈 60% 감소 실측 ([결과](docs/phase6-ai-relevance-filtering.md))
 - [x] 7단계 — 프론트엔드 React 전환 + 백엔드 성능 개선 — 바닐라 JS 프론트엔드를 다크 테마 재설계 거쳐 React 18+TypeScript+Vite로 전면 재작성, Docker 멀티스테이지 빌드로 CI/CD 통합, SSE 인증/플러시 버그 2건 수정. 다른 실무 프로젝트와 비교 조사해 백엔드 N+1 쿼리 2건·트랜잭션 스코프·누락 인덱스 6개·커넥션 풀 미설정 수정
+- [x] 8단계 — AI 관련도 필터 프로덕션 경화 + 임베딩 기반 중복 제거 — tool use 구조화 출력·프롬프트 인젝션 방어·Redis 캐싱·429 재시도·Micrometer 계측으로 6단계 AI 필터를 프로덕션 수준으로 경화. 라벨링된 eval 데이터셋으로 precision/recall/F1을 실측(78%→100%)하며 프롬프트를 개선하는 사이클 수행. Voyage AI 임베딩 코사인 유사도로 같은 사건의 중복 보도를 감지해 중복 알림·중복 AI 호출 제거 ([결과](docs/phase8-embedding-dedup.md))
 
 전체 진행 과정과 각 단계에서 실제로 겪은 문제·해결 방법은 [`docs/project-story.md`](docs/project-story.md)에 상세히 정리돼 있습니다.
 

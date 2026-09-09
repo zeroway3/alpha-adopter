@@ -1,5 +1,6 @@
 package com.alphaadopter.core.pipeline
 
+import com.alphaadopter.core.ai.NewsDeduplicationService
 import com.alphaadopter.core.ai.RelevanceScorer
 import com.alphaadopter.core.collector.NewsRawMessage
 import com.alphaadopter.core.domain.news.NewsArticleRepository
@@ -23,6 +24,7 @@ class NewsRawConsumer(
     private val subscriptionCache: SubscriptionCache,
     private val relevanceScorer: RelevanceScorer,
     private val newsMatchPersister: NewsMatchPersister,
+    private val newsDeduplicationService: NewsDeduplicationService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -49,20 +51,37 @@ class NewsRawConsumer(
                 message.description.contains(subscription.keyword, ignoreCase = true)
         }
 
+        // 문자열 매칭을 통과했더라도(=알림 후보), 같은 사건을 다룬 다른 매체 기사가 최근에
+        // 이미 처리됐을 수 있다 — 임베딩 유사도로 그걸 감지해 중복이면 AI 관련도 판단(비용 발생)과
+        // 알림 발행을 모두 건너뛴다. 문자열 매칭이 아예 없는 기사는 애초에 알림 후보가 아니므로
+        // 이 검사 자체를 하지 않는다(불필요한 임베딩 호출 절약).
+        val duplicateOf = if (substringMatched.isEmpty()) {
+            null
+        } else {
+            when (val dedup = newsDeduplicationService.checkAndRegister(message.link, message.title, message.description)) {
+                is NewsDeduplicationService.DedupResult.Duplicate -> dedup.duplicateOfLink
+                NewsDeduplicationService.DedupResult.Unique -> null
+            }
+        }
+
         // 문자열 포함만으로는 "스치듯 언급된" 무관한 기사도 매칭되는 노이즈가 있어, 그 위에 AI
-        // 관련도 판단을 2차 필터로 적용한다 (docs/phase6-ai-relevance-filtering.md). DB
-        // 트랜잭션을 열기 전에 모든 AI 호출을 끝내둔다.
-        val evaluatedMatches = substringMatched.map { subscription ->
-            EvaluatedMatch(subscription, relevanceScorer.evaluate(subscription.keyword, message.title, message.description))
+        // 관련도 판단을 2차 필터로 적용한다. DB 트랜잭션을 열기 전에 모든 AI 호출을 끝내둔다.
+        val evaluatedMatches = if (duplicateOf != null) {
+            emptyList()
+        } else {
+            substringMatched.map { subscription ->
+                EvaluatedMatch(subscription, relevanceScorer.evaluate(subscription.keyword, message.title, message.description))
+            }
         }
 
         val relevantCount = newsMatchPersister.persist(message, parsePubDate(message.pubDate), evaluatedMatches)
 
         log.info(
-            "뉴스 처리 완료: {} (문자열 매칭 {}건 중 AI 통과 {}건)",
+            "뉴스 처리 완료: {} (문자열 매칭 {}건 중 AI 통과 {}건{})",
             message.title,
             substringMatched.size,
             relevantCount,
+            if (duplicateOf != null) ", 중복 기사로 스킵(원본=$duplicateOf)" else "",
         )
     }
 

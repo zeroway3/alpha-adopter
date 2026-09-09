@@ -92,6 +92,19 @@ app:
     # Claude API가 429(rate limit)를 반환하면 지수 백오프로 최대 이만큼 재시도한다
     max-retries: ${AI_RELEVANCE_MAX_RETRIES:3}
     retry-initial-delay-ms: ${AI_RELEVANCE_RETRY_INITIAL_DELAY_MS:500}
+    # 같은 사건을 다룬 서로 다른 기사를 감지하기 위한 임베딩(Voyage AI). 키가 없으면
+    # NewsDeduplicationService가 자동으로 비활성화되고 기존처럼 중복 검사 없이 동작한다.
+    voyage-api-key: ${VOYAGE_API_KEY:}
+    embedding-model: ${AI_EMBEDDING_MODEL:voyage-4-lite}
+    embedding-max-retries: ${AI_EMBEDDING_MAX_RETRIES:3}
+    embedding-retry-initial-delay-ms: ${AI_EMBEDDING_RETRY_INITIAL_DELAY_MS:500}
+    # 코사인 유사도가 이 값 이상이면 같은 사건을 다룬 중복 기사로 판단한다
+    dedup-similarity-threshold: ${AI_DEDUP_SIMILARITY_THRESHOLD:0.90}
+    # 이 시간(시간 단위) 안에 들어온 기사끼리만 중복 비교 대상으로 삼는다 — 오래된 기사와는
+    # 우연히 문구가 비슷해도 별개 사건일 가능성이 높다
+    dedup-window-hours: ${AI_DEDUP_WINDOW_HOURS:48}
+    # 윈도우 안에서 최대 이만큼의 최근 기사와만 비교한다(브루트포스 비교 비용 상한)
+    dedup-max-candidates: ${AI_DEDUP_MAX_CANDIDATES:200}
   kafka:
     topic:
       news-raw: news.raw

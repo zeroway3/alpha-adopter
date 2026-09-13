@@ -7,6 +7,7 @@ import com.alphaadopter.core.domain.news.NewsArticleRepository
 import com.alphaadopter.core.domain.notification.Notification
 import com.alphaadopter.core.domain.notification.NotificationRepository
 import com.alphaadopter.core.domain.subscription.SubscriptionRepository
+import com.alphaadopter.core.personalization.PersonalizationScorer
 import com.alphaadopter.core.subscription.CachedSubscription
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -27,6 +28,7 @@ class NewsMatchPersister(
     private val newsArticleRepository: NewsArticleRepository,
     private val subscriptionRepository: SubscriptionRepository,
     private val notificationRepository: NotificationRepository,
+    private val personalizationScorer: PersonalizationScorer,
     private val kafkaTemplate: KafkaTemplate<String, Any>,
     @Value("\${app.kafka.topic.news-matched}") private val newsMatchedTopic: String,
 ) {
@@ -57,12 +59,19 @@ class NewsMatchPersister(
             }
             relevantCount++
 
+            // 이 구독의 과거 전달 이력을 기준으로 참여도 점수를 매긴다 — 지금 만드는 이
+            // 알림 자체는 아직 저장 전이라 집계에 포함되지 않는다
+            val personalizationScore = personalizationScorer.scoreFor(match.subscription.id)
+
             val notification = notificationRepository.save(
                 Notification(
                     // 캐시에는 id만 있으므로, 실제 row를 다시 조회하지 않고 프록시 참조로 연관관계만 건다
                     subscription = subscriptionRepository.getReferenceById(match.subscription.id),
                     newsArticle = article,
-                ).apply { relevanceScore = match.relevance.score },
+                ).apply {
+                    relevanceScore = match.relevance.score
+                    this.personalizationScore = personalizationScore
+                },
             )
             kafkaTemplate.send(
                 newsMatchedTopic,
@@ -73,6 +82,7 @@ class NewsMatchPersister(
                     subscriptionKeyword = match.subscription.keyword,
                     title = article.title,
                     link = article.link,
+                    personalizationScore = personalizationScore,
                 ),
             )
         }

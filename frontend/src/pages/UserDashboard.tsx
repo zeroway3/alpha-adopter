@@ -27,6 +27,15 @@ function RelevanceBadge({ score }: { score: number | null }) {
   return <span className={`badge ${variant}`}>{score}점</span>;
 }
 
+// 이 구독(키워드)에 대해 내가 평소 얼마나 읽어왔는지의 비율. 아직 판단할 이력이 부족하면
+// (콜드스타트) null이라 "데이터 부족"으로 표시한다 — 0%(관심 없음)와 혼동되지 않게.
+function PersonalizationBadge({ score }: { score: number | null }) {
+  if (score === null) return <span className="badge badge-default">데이터 부족</span>;
+  const pct = Math.round(score * 100);
+  const variant = pct >= 70 ? "badge-success" : pct >= 40 ? "badge-warning" : "badge-danger";
+  return <span className={`badge ${variant}`}>{pct}%</span>;
+}
+
 interface Props {
   token: string;
   onSessionExpired: () => void;
@@ -196,6 +205,8 @@ export function UserDashboard({ token, onSessionExpired }: Props) {
               </a>
               <span className="meta">
                 키워드: {item.subscriptionKeyword} · {new Date(item.receivedAt).toLocaleTimeString("ko-KR")}
+                {" · "}
+                <PersonalizationBadge score={item.personalizationScore} />
               </span>
             </li>
           ))}
@@ -222,6 +233,7 @@ export function UserDashboard({ token, onSessionExpired }: Props) {
                   <th>키워드</th>
                   <th>기사</th>
                   <th>AI 관련도</th>
+                  <th>참여도</th>
                   <th>상태</th>
                   <th>수신</th>
                   <th>읽음</th>
@@ -231,7 +243,7 @@ export function UserDashboard({ token, onSessionExpired }: Props) {
               <tbody>
                 {history.length === 0 && (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: "center", color: "var(--text-faint)", padding: "2rem 1rem" }}>
+                    <td colSpan={8} style={{ textAlign: "center", color: "var(--text-faint)", padding: "2rem 1rem" }}>
                       아직 받은 알림이 없습니다.
                     </td>
                   </tr>
@@ -246,6 +258,9 @@ export function UserDashboard({ token, onSessionExpired }: Props) {
                     </td>
                     <td>
                       <RelevanceBadge score={n.relevanceScore} />
+                    </td>
+                    <td>
+                      <PersonalizationBadge score={n.personalizationScore} />
                     </td>
                     <td>
                       <StatusBadge status={n.status} />

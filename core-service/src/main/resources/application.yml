@@ -119,6 +119,10 @@ app:
     # 메모리 캐시로 대신하는데, 그 캐시를 얼마나 자주 최신화할지. 구독 생성/삭제 시에는 즉시
     # 갱신되므로(SubscriptionController), 이 값은 그 사이 최악의 지연 시간일 뿐이다.
     cache-refresh-ms: ${SUBSCRIPTION_CACHE_REFRESH_MS:30000}
+  personalization:
+    # 이 구독(키워드)으로 전달된 알림이 이 값 미만이면 콜드스타트로 보고 점수 계산을 보류(null)한다.
+    # PersonalizationScorer 참고
+    min-sample-size: ${PERSONALIZATION_MIN_SAMPLE_SIZE:5}
   notification:
     channel: notifications
     heartbeat-interval-ms: ${NOTIFICATION_HEARTBEAT_INTERVAL_MS:20000}

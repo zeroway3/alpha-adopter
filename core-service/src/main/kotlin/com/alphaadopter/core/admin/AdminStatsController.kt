@@ -31,6 +31,7 @@ data class AdminNotificationSummary(
     val readAt: Instant?,
     val clickedAt: Instant?,
     val relevanceScore: Int?,
+    val personalizationScore: Double?,
 ) {
     companion object {
         fun from(n: Notification) = AdminNotificationSummary(
@@ -43,6 +44,7 @@ data class AdminNotificationSummary(
             readAt = n.readAt,
             clickedAt = n.clickedAt,
             relevanceScore = n.relevanceScore,
+            personalizationScore = n.personalizationScore,
         )
     }
 }

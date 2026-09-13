@@ -30,6 +30,7 @@ export interface NotificationHistoryItem {
   readAt: string | null;
   clickedAt: string | null;
   relevanceScore: number | null;
+  personalizationScore: number | null;
 }
 
 // 커서 기반 페이지네이션 응답. nextCursor가 null이면 마지막 페이지.
@@ -49,6 +50,7 @@ export interface AdminNotificationSummary {
   readAt: string | null;
   clickedAt: string | null;
   relevanceScore: number | null;
+  personalizationScore: number | null;
 }
 
 export interface AdminStatsResponse {
@@ -91,4 +93,5 @@ export interface MatchedNotificationEvent {
   subscriptionKeyword: string;
   title: string;
   link: string;
+  personalizationScore: number | null;
 }

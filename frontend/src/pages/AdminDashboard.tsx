@@ -30,6 +30,13 @@ function RelevanceBadge({ score }: { score: number | null }) {
   return <span className={`badge ${variant}`}>{score}점</span>;
 }
 
+function PersonalizationBadge({ score }: { score: number | null }) {
+  if (score === null) return <span className="badge badge-default">데이터 부족</span>;
+  const pct = Math.round(score * 100);
+  const variant = pct >= 70 ? "badge-success" : pct >= 40 ? "badge-warning" : "badge-danger";
+  return <span className={`badge ${variant}`}>{pct}%</span>;
+}
+
 interface StatBox {
   icon: IconName;
   color: string;
@@ -268,6 +275,7 @@ export function AdminDashboard({ onSessionExpired }: Props) {
                   <th>키워드</th>
                   <th>기사</th>
                   <th>AI 관련도</th>
+                  <th>참여도</th>
                   <th>상태</th>
                   <th>발생 시각</th>
                 </tr>
@@ -280,6 +288,9 @@ export function AdminDashboard({ onSessionExpired }: Props) {
                     <td>{n.articleTitle}</td>
                     <td>
                       <RelevanceBadge score={n.relevanceScore} />
+                    </td>
+                    <td>
+                      <PersonalizationBadge score={n.personalizationScore} />
                     </td>
                     <td>
                       <StatusBadge status={n.status} />

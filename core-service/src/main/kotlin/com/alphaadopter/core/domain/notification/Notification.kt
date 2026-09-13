@@ -66,4 +66,9 @@ class Notification(
     // Claude가 판단한 키워드-기사 관련도(0~100). AI 비활성화(ANTHROPIC_API_KEY 없음)나
     // 판단 실패 시 null — 이 경우 키워드 문자열 매칭 결과를 그대로 신뢰한다 (fail-open)
     var relevanceScore: Int? = null
+
+    // 이 구독(키워드)에 대해 사용자가 실제로 얼마나 반응해왔는지(읽음/클릭 비율, 0.0~1.0).
+    // 알림 생성 시점까지 전달된 이력이 충분하지 않으면(콜드스타트) null — "아직 판단할 데이터가
+    // 없음"과 "관심이 낮음(0.0에 가까움)"을 구분하기 위함 (PersonalizationScorer 참고)
+    var personalizationScore: Double? = null
 }

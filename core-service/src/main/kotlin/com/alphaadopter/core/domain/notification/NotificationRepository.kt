@@ -45,6 +45,18 @@ interface NotificationRepository : JpaRepository<Notification, Long> {
 
     fun findFirstBySubscriptionKeywordAndNewsArticleLink(keyword: String, link: String): Notification?
 
+    // PersonalizationScorer가 구독(키워드)별 참여도(읽음 비율)를 계산할 때 쓰는 분모/분자.
+    // 실제로 전달(SENT)된 알림만 대상으로 한다 — 아직 안 보낸(MATCHED) 알림은 사용자가
+    // 반응할 기회 자체가 없었으므로 참여도 계산에서 제외해야 한다.
+    @Query("SELECT COUNT(n) FROM Notification n WHERE n.status = :status AND n.subscription.id = :subscriptionId")
+    fun countByStatusAndSubscriptionId(status: NotificationStatus, subscriptionId: Long): Long
+
+    @Query(
+        "SELECT COUNT(n) FROM Notification n " +
+            "WHERE n.status = :status AND n.subscription.id = :subscriptionId AND n.readAt IS NOT NULL",
+    )
+    fun countByStatusAndSubscriptionIdAndReadAtIsNotNull(status: NotificationStatus, subscriptionId: Long): Long
+
     // 관리자 대시보드 "최근 알림" 목록. 유저 이메일/키워드/기사 제목을 함께 보여주므로 to-one 연관을
     // JOIN FETCH로 한 번에 읽어 lazy 로딩 N+1을 없앤다. 호출부에서 PageRequest.of(0, N)으로 개수 제한.
     @Query(

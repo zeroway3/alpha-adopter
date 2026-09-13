@@ -34,11 +34,15 @@ class DailyDigestScheduler(
         // 메일 발송이 실패한 사용자의 알림은 SENT로 바꾸지 않고 다음 주기에 재시도한다
         val delivered = mutableListOf<Notification>()
         pending.groupBy { it.subscription.user }.forEach { (user, notifications) ->
+            // 참여도 점수가 높은 구독의 알림을 다이제스트 상단에 배치한다. 콜드스타트(null)는
+            // 판단 보류일 뿐 "관심 없음"이 아니므로 중간값을 줘서 너무 아래로 밀리지 않게 한다.
+            // 걸러내는 게 아니라 순서만 바꾸는 것 — 회원 전체는 항상 그대로 전달된다.
+            val ordered = notifications.sortedByDescending { it.personalizationScore ?: COLD_START_NEUTRAL_SCORE }
             runCatching {
-                mailSender.send(buildDigestMail(user.email, notifications))
+                mailSender.send(buildDigestMail(user.email, ordered))
             }.onSuccess {
-                log.info("[일일 다이제스트] {} 님에게 {}건 발송", user.email, notifications.size)
-                delivered += notifications
+                log.info("[일일 다이제스트] {} 님에게 {}건 발송", user.email, ordered.size)
+                delivered += ordered
             }.onFailure { e ->
                 log.warn("{} 님에게 다이제스트 메일 발송 실패, 다음 주기에 재시도합니다: {}", user.email, e.message)
             }
@@ -62,4 +66,8 @@ class DailyDigestScheduler(
                 "- ${notification.newsArticle.title}\n  $baseUrl/api/notifications/${notification.id}/click"
             }
         }
+
+    private companion object {
+        const val COLD_START_NEUTRAL_SCORE = 0.5
+    }
 }

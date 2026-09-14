@@ -7,18 +7,16 @@ interface FeedItem extends MatchedNotificationEvent {
   receivedAt: string;
 }
 
-// EventSource는 커스텀 헤더를 못 보내므로 토큰을 쿼리 파라미터로 실어 보낸다
-// (JwtAuthFilter가 /api/notifications/stream 한정으로 이 방식을 허용).
-export function useNotificationStream(token: string | undefined) {
+// access_token이 httpOnly 쿠키로 발급되므로, EventSource가 커스텀 헤더를 못 보내도
+// same-origin 요청에 브라우저가 쿠키를 자동으로 실어 보내 별도 처리 없이 인증된다.
+export function useNotificationStream() {
   const [status, setStatus] = useState<SseStatus>("connecting");
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const sourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    if (!token) return;
-
     setStatus("connecting");
-    const source = new EventSource(`/api/notifications/stream?token=${encodeURIComponent(token)}`);
+    const source = new EventSource("/api/notifications/stream");
     sourceRef.current = source;
 
     source.onopen = () => setStatus("connected");
@@ -32,7 +30,7 @@ export function useNotificationStream(token: string | undefined) {
       source.close();
       sourceRef.current = null;
     };
-  }, [token]);
+  }, []);
 
   return { status, feed };
 }

@@ -1,8 +1,8 @@
 // AdminStatsController / AuthController / SubscriptionController / NotificationHistoryController의
 // 실제 응답 DTO(core-service 커틀린 코드)와 필드를 맞춘 타입들.
 
+// 토큰은 더 이상 응답 본문에 없다 — httpOnly 쿠키로만 전달되고 JS는 값을 읽지 않는다.
 export interface Session {
-  token: string;
   id: number;
   email: string;
   isMember: boolean;

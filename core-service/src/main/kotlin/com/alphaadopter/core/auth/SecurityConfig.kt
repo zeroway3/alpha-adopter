@@ -23,7 +23,10 @@ class SecurityConfig(
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
         http
-            // 쿠키/세션 없이 Authorization 헤더(JWT)로만 인증하는 stateless API라 CSRF 보호 불필요
+            // access/refresh 쿠키가 SameSite=Strict라 크로스사이트 요청에는 애초에 실리지 않는다
+            // (AuthCookies 참고) — 별도 CSRF 토큰 없이도 CSRF를 막을 수 있어 비활성화한다.
+            // 세션 자체는 여전히 STATELESS(서버 세션 저장 없음, 쿠키는 JWT/refresh 토큰을
+            // 담는 운반 수단일 뿐).
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .httpBasic { it.disable() }
@@ -38,7 +41,9 @@ class SecurityConfig(
                         // 내부적으로 /error 로 포워딩되는데, 이 경로를 permitAll 해두지 않으면
                         // 인증 없는 요청에서는 실제 상태코드(409/401 등)가 전부 403으로 가려진다.
                         "/error",
-                        "/api/auth/**",
+                        // "/api/auth/me"는 여기 포함하지 않는다 — access token(쿠키)이 유효한
+                        // 사용자만 호출 가능해야 프론트가 "로그인돼 있는가"를 물어볼 수 있다.
+                        "/api/auth/signup", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout",
                         "/actuator/**", // Prometheus 스크랩 + 헬스체크는 인증 없이 접근 가능해야 함
                         // 다이제스트 이메일 안의 링크(로그인 세션이 없는 이메일 클라이언트에서 클릭)라 인증 불가
                         "/api/notifications/*/read", "/api/notifications/*/click",

@@ -1,31 +1,30 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { act, render, screen, fireEvent } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { AuthPage } from "./AuthPage";
 import { AuthProvider } from "../auth/AuthContext";
 
-beforeEach(() => {
-  localStorage.clear();
-});
-
 describe("AuthPage", () => {
-  it("기본값으로 로그인 탭이 활성화된 채 렌더된다", () => {
+  it("기본값으로 로그인 탭이 활성화된 채 렌더된다", async () => {
     render(
       <AuthProvider>
         <AuthPage />
       </AuthProvider>,
     );
+    // AuthProvider가 부팅 시 세션을 확인(GET /api/auth/me)하는 비동기 작업이 끝날 때까지 대기
+    await act(async () => {});
     // 탭 버튼과 제출 버튼 둘 다 "로그인" 텍스트를 쓰므로 DOM 순서(탭이 먼저)로 구분한다
     const [loginTab] = screen.getAllByRole("button", { name: "로그인" });
     expect(loginTab).toHaveClass("active");
     expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
   });
 
-  it("회원가입 탭을 누르면 비밀번호 힌트가 8자 이상으로 바뀐다", () => {
+  it("회원가입 탭을 누르면 비밀번호 힌트가 8자 이상으로 바뀐다", async () => {
     render(
       <AuthProvider>
         <AuthPage />
       </AuthProvider>,
     );
+    await act(async () => {});
     fireEvent.click(screen.getByRole("button", { name: "회원가입" }));
     expect(screen.getByPlaceholderText("8자 이상")).toBeInTheDocument();
   });

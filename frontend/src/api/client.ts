@@ -9,25 +9,6 @@ import type {
   SubscriptionType,
 } from "./types";
 
-const SESSION_KEY = "alphaadopter_session";
-
-export function getSession(): Session | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as Session) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function setSession(session: Session): void {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-}
-
-export function clearSession(): void {
-  localStorage.removeItem(SESSION_KEY);
-}
-
 export class SessionExpiredError extends Error {
   constructor() {
     super("세션이 만료되었습니다. 다시 로그인해주세요.");
@@ -44,23 +25,32 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
   return body.detail || body.message || `${fallback} (${res.status})`;
 }
 
+// access token이 httpOnly 쿠키라 만료 여부를 JS가 미리 알 수 없다. Spring Security가
+// STATELESS+익명 인증 기본 설정이라, 인증 자체가 없는(또는 만료된) 요청은 401이 아니라
+// 403으로 응답한다(AuthenticationEntryPoint가 아니라 AccessDeniedHandler 경로 — 익명
+// Authentication은 있지만 authenticated()를 통과 못 해서 생기는 403). 그래서 401뿐 아니라
+// 403도 "세션이 끊겼을 수 있다"로 보고 refresh 쿠키로 한 번 재발급을 시도한 뒤 재시도한다.
+// (권한 자체가 없어 나는 정상적인 403 — 예: 비회원의 SSE 접근 — 은 refresh해도 여전히
+// 403이라 재시도 이후 그대로 반환되므로 잘못된 동작은 아니다.) AuthContext가 세션 유지 중
+// 주기적으로도 refresh를 호출하지만(장시간 열어둔 SSE 탭 대비), 이 재시도 로직이 있어야
+// 그 주기 사이의 빈틈도 메워진다.
 async function authFetch(path: string, options: RequestInit = {}): Promise<Response> {
-  const session = getSession();
-  const headers = new Headers(options.headers);
-  if (session) headers.set("Authorization", `Bearer ${session.token}`);
+  const res = await fetch(path, { ...options, credentials: "same-origin" });
+  if (res.status !== 401 && res.status !== 403) return res;
 
-  const res = await fetch(path, { ...options, headers });
-  if (res.status === 401) {
-    clearSession();
-    throw new SessionExpiredError();
-  }
-  return res;
+  const refreshed = await refresh().catch(() => null);
+  if (!refreshed) throw new SessionExpiredError();
+
+  const retry = await fetch(path, { ...options, credentials: "same-origin" });
+  if (retry.status === 401) throw new SessionExpiredError();
+  return retry;
 }
 
 export async function signup(email: string, password: string): Promise<Session> {
   const res = await fetch("/api/auth/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) throw new Error(await readErrorMessage(res, "회원가입 실패"));
@@ -71,10 +61,29 @@ export async function login(email: string, password: string): Promise<Session> {
   const res = await fetch("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) throw new Error(await readErrorMessage(res, "로그인 실패"));
   return res.json();
+}
+
+// 페이지 로드 시 "이미 로그인돼 있는가"를 확인한다. access_token 쿠키가 없거나 만료됐으면
+// 401 — 로그아웃 상태로 취급한다.
+export async function me(): Promise<Session | null> {
+  const res = await fetch("/api/auth/me", { credentials: "same-origin" });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function refresh(): Promise<Session | null> {
+  const res = await fetch("/api/auth/refresh", { method: "POST", credentials: "same-origin" });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function logout(): Promise<void> {
+  await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
 }
 
 export async function loadSubscriptions(): Promise<Subscription[]> {

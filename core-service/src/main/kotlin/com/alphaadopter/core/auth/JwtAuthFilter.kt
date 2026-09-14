@@ -8,8 +8,11 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 
-// 일반 API 호출은 Authorization: Bearer 헤더로 인증하지만, SSE(EventSource)는 커스텀 헤더를
-// 보낼 수 없어서 그 엔드포인트만 예외적으로 ?token= 쿼리 파라미터도 허용한다.
+// access_token httpOnly 쿠키가 기본 인증 경로다. 브라우저는 same-origin 요청에 쿠키를
+// 자동으로 실어 보내므로 SSE(EventSource)도 별도 처리 없이 인증된다 — 예전엔 EventSource가
+// 커스텀 헤더를 못 보내 ?token= 쿼리 파라미터로 우회했지만, 쿠키 기반으로 전환하며 그 우회가
+// 필요 없어졌다. Authorization: Bearer 헤더는 curl/스크립트 등 브라우저 밖 클라이언트를 위한
+// fallback으로만 남겨둔다.
 @Component
 class JwtAuthFilter(
     private val jwtService: JwtService,
@@ -35,10 +38,11 @@ class JwtAuthFilter(
     }
 
     private fun extractToken(request: HttpServletRequest): String? {
+        request.cookies?.firstOrNull { it.name == ACCESS_TOKEN_COOKIE }?.value?.let { return it }
         val header = request.getHeader("Authorization")
         if (header != null && header.startsWith("Bearer ")) {
             return header.removePrefix("Bearer ")
         }
-        return request.getParameter("token")
+        return null
     }
 }

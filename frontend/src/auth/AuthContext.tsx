@@ -1,9 +1,15 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import * as api from "../api/client";
 import type { Session } from "../api/types";
 
+// access token(쿠키) 기본 유효기간(백엔드 app.jwt.access-validity-minutes, 기본 60분)보다
+// 충분히 짧은 주기로 미리 갱신해, 오래 열어둔 탭의 SSE 연결이 만료로 끊기지 않게 한다.
+const PROACTIVE_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+
 interface AuthContextValue {
   session: Session | null;
+  /** 부팅 시 세션 확인(GET /api/auth/me)이 아직 끝나지 않은 동안 true */
+  initializing: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -14,33 +20,56 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSessionState] = useState<Session | null>(() => api.getSession());
+  const [session, setSessionState] = useState<Session | null>(null);
+  const [initializing, setInitializing] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .me()
+      .then((s) => {
+        if (!cancelled) setSessionState(s);
+      })
+      .catch(() => {
+        if (!cancelled) setSessionState(null);
+      })
+      .finally(() => {
+        if (!cancelled) setInitializing(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    const id = setInterval(() => {
+      api.refresh().catch(() => {});
+    }, PROACTIVE_REFRESH_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [session]);
 
   const login = useCallback(async (email: string, password: string) => {
     const s = await api.login(email, password);
-    api.setSession(s);
     setSessionState(s);
   }, []);
 
   const signup = useCallback(async (email: string, password: string) => {
     const s = await api.signup(email, password);
-    api.setSession(s);
     setSessionState(s);
   }, []);
 
   const logout = useCallback(() => {
-    api.clearSession();
-    setSessionState(null);
+    api.logout().finally(() => setSessionState(null));
   }, []);
 
   const handleSessionExpired = useCallback(() => {
-    api.clearSession();
     setSessionState(null);
   }, []);
 
   const value = useMemo(
-    () => ({ session, login, signup, logout, handleSessionExpired }),
-    [session, login, signup, logout, handleSessionExpired],
+    () => ({ session, initializing, login, signup, logout, handleSessionExpired }),
+    [session, initializing, login, signup, logout, handleSessionExpired],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

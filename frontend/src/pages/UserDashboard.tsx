@@ -37,11 +37,10 @@ function PersonalizationBadge({ score }: { score: number | null }) {
 }
 
 interface Props {
-  token: string;
   onSessionExpired: () => void;
 }
 
-export function UserDashboard({ token, onSessionExpired }: Props) {
+export function UserDashboard({ onSessionExpired }: Props) {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [history, setHistory] = useState<NotificationHistoryItem[]>([]);
   const [historyCursor, setHistoryCursor] = useState<string | null>(null);
@@ -50,7 +49,7 @@ export function UserDashboard({ token, onSessionExpired }: Props) {
   const [keyword, setKeyword] = useState("");
   const [type, setType] = useState<SubscriptionType>("KEYWORD");
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
-  const { status: sseStatus, feed } = useNotificationStream(token);
+  const { status: sseStatus, feed } = useNotificationStream();
 
   const withSessionGuard = useCallback(
     async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {

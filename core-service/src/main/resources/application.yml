@@ -79,6 +79,14 @@ app:
     # HS256은 최소 256비트(32바이트) 키 필요. 로컬 기본값은 개발 편의용이며, 배포 환경에서는
     # core-service-secrets(K8s Secret)의 JWT_SECRET으로 반드시 교체해서 사용한다.
     secret: ${JWT_SECRET:M0851ikfMgAC8/ZE7Eb6/CKw1C0JFEtbwlHs9q1vLxQ=}
+    # access token(쿠키) 유효기간. 만료돼도 refresh token으로 재발급받으므로 짧게 유지한다.
+    access-validity-minutes: ${JWT_ACCESS_VALIDITY_MINUTES:60}
+    # refresh token(Redis에 해시로 저장, RefreshTokenService 참고) 유효기간
+    refresh-validity-days: ${JWT_REFRESH_VALIDITY_DAYS:30}
+    # 배포가 실제로 HTTPS를 종단하는지 확인한 뒤에만 true로 켠다 — false인 채로 두면 로컬(HTTP)
+    # 개발이 정상 동작한다. true인데 HTTP로 서빙되면 브라우저가 쿠키 자체를 보내지 않아 인증이
+    # 전부 깨지므로 주의 (AuthCookies 참고).
+    cookie-secure: ${JWT_COOKIE_SECURE:false}
   ai:
     # 키워드 문자열 매칭만으로는 걸러지지 않는 노이즈를 Claude로 2차 필터링한다.
     # 키가 없으면(로컬 기본값처럼 빈 문자열) RelevanceScorer가 자동으로 비활성화되고

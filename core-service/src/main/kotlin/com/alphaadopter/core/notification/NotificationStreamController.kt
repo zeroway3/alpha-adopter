@@ -9,8 +9,9 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 
-// EventSource는 커스텀 헤더를 못 보내서, 이 요청은 JwtAuthFilter가 ?token= 쿼리 파라미터로도
-// 인증을 허용해준다 (다른 API는 Authorization 헤더만 허용).
+// EventSource는 커스텀 헤더를 못 보내지만, access_token이 httpOnly 쿠키로 발급되므로
+// same-origin 요청인 이 스트림에도 브라우저가 쿠키를 자동으로 실어 보내 별도 처리가 필요 없다
+// (JwtAuthFilter 참고).
 @RestController
 class NotificationStreamController(
     private val userRepository: UserRepository,

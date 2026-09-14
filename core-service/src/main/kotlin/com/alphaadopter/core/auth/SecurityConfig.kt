@@ -14,6 +14,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 class SecurityConfig(
     private val jwtAuthFilter: JwtAuthFilter,
+    private val rateLimitFilter: RateLimitFilter,
 ) {
 
     @Bean
@@ -44,7 +45,10 @@ class SecurityConfig(
                     ).permitAll()
                     .anyRequest().authenticated()
             }
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
+            // 회원가입/로그인/구독 생성은 IP 기준 rate limit을 JWT 파싱보다 먼저 적용한다
+            // (미인증 요청인 회원가입/로그인부터 보호해야 하므로)
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter::class.java)
+            .addFilterBefore(jwtAuthFilter, RateLimitFilter::class.java)
 
         return http.build()
     }

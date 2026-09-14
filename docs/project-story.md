@@ -254,7 +254,11 @@ alpha-adopter에 실제로 존재하던 문제 5건을 수정했습니다.
   `localStorage` 저장이라 XSS 노출 표면도 있음 — 다음에 붙일 만한 항목으로 인지하고 있음.
 - **Role 기반 인가 없음**: 관리자 여부가 DB가 아니라 배포 환경변수 화이트리스트. 지금
   규모엔 합리적이지만 "RBAC 설계"라고는 말할 수 없음.
-- **rate limiting 없음**: 회원가입/로그인/구독 API에 무차별 대입 방어가 없음.
+- ~~**rate limiting 없음**~~: (2026-09-14 해결) `RateLimitFilter`(`OncePerRequestFilter`)를 도입해
+  `/api/auth/signup`·`/api/auth/login`·`/api/subscriptions`(POST)에 IP 기준 고정 윈도우 rate
+  limit을 적용했다. `NewsDeduplicationService`와 동일하게 Redis INCR+EXPIRE로 직접 구현해 별도
+  라이브러리 의존성을 추가하지 않았고, Redis 장애 시에는 막지 않는다(fail-open). 한도 초과 시
+  429 + `Retry-After` 헤더를 반환하고 Micrometer로 허용/거부를 계측한다.
 - ~~**알림 목록 무제한 페이지네이션**~~: (2026-09-08 해결) `/api/notifications`를 `(createdAt, id)`
   키셋 커서 기반 페이지네이션으로 전환. `limit+1`건을 읽어 별도 count 쿼리 없이 `hasMore`를
   판정하고, `(subscription_id, created_at, id)` 복합 인덱스를 추가했다. 프런트엔드는 "더 보기"로
@@ -290,9 +294,9 @@ alpha-adopter에 실제로 존재하던 문제 5건을 수정했습니다.
 
 - ~~`/api/notifications` 커서 기반 페이지네이션~~ (2026-09-08 완료)
 - ~~`/api/admin/stats` Redis 캐싱 (30~60초 TTL)~~ (2026-09-08 완료)
+- ~~Rate limiting (회원가입/로그인/구독 API)~~ (2026-09-14 완료)
 - Refresh Token 도입, JWT `localStorage` → httpOnly 쿠키 전환 검토
 - Role 기반 인가(RBAC)로 전환
-- Rate limiting (회원가입/로그인/구독 API)
 - Flyway 마이그레이션 도입 (`ddl-auto: update` → `validate` 전환)
 - 알림 개인화 필터링 (읽음/클릭 참여도 데이터는 이미 수집 중, 스코어링 로직은 미구현 —
   [`docs/future-ideas.md`](future-ideas.md) 참고)

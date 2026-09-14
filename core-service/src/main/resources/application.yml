@@ -119,6 +119,16 @@ app:
     # 메모리 캐시로 대신하는데, 그 캐시를 얼마나 자주 최신화할지. 구독 생성/삭제 시에는 즉시
     # 갱신되므로(SubscriptionController), 이 값은 그 사이 최악의 지연 시간일 뿐이다.
     cache-refresh-ms: ${SUBSCRIPTION_CACHE_REFRESH_MS:30000}
+  rate-limit:
+    # 회원가입/로그인/구독 생성 API의 IP 기준 고정 윈도우 rate limit (RateLimitFilter 참고).
+    # Redis 장애 시에는 요청을 막지 않는다(fail-open).
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    auth:
+      limit: ${RATE_LIMIT_AUTH_LIMIT:10}
+      window-seconds: ${RATE_LIMIT_AUTH_WINDOW_SECONDS:60}
+    subscription:
+      limit: ${RATE_LIMIT_SUBSCRIPTION_LIMIT:30}
+      window-seconds: ${RATE_LIMIT_SUBSCRIPTION_WINDOW_SECONDS:60}
   personalization:
     # 이 구독(키워드)으로 전달된 알림이 이 값 미만이면 콜드스타트로 보고 점수 계산을 보류(null)한다.
     # PersonalizationScorer 참고

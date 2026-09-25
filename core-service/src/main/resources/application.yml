@@ -67,9 +67,10 @@ app:
   # 다이제스트 이메일의 클릭 추적 리다이렉트 링크를 만들 때 사용. 배포 환경에서는 실제 공개 도메인으로 교체
   base-url: ${APP_BASE_URL:http://localhost:8090}
   admin:
-    # 관리자 화면(/api/admin/**) 접근을 허용할 이메일 목록 (콤마 구분). 로그인 자체는 이메일+비밀번호로
-    # 인증하지만, "누가 관리자인가"는 별도 역할(Role) 테이블 없이 배포 환경변수로만 판단한다
-    # (AdminEmailChecker 참고). 공개 저장소라 실제 이메일은 여기 커밋하지 않고
+    # 관리자 권한 자체는 User.role(DB)로 판단하지만, "누구를 관리자로 만들지"는 재배포 없이
+    # 조정할 수 있도록 이 목록(콤마 구분)을 기동 시점에만 참고한다 — 여기 있는 이메일 계정을
+    # ADMIN으로 승격(idempotent grant)한다(AdminBootstrapRunner 참고). 목록에서 빼도 기존 권한이
+    # 자동 회수되지는 않는다. 공개 저장소라 실제 이메일은 여기 커밋하지 않고
     # core-service-secrets(K8s Secret)의 ADMIN_EMAILS 키로만 주입한다.
     emails: ${ADMIN_EMAILS:}
     # /api/admin/stats 집계 결과를 Redis에 캐싱하는 TTL(초). 대시보드 새로고침 수준의 저빈도

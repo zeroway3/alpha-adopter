@@ -48,6 +48,10 @@ class SecurityConfig(
                         // 다이제스트 이메일 안의 링크(로그인 세션이 없는 이메일 클라이언트에서 클릭)라 인증 불가
                         "/api/notifications/*/read", "/api/notifications/*/click",
                     ).permitAll()
+                    // AdminStatsController도 requireAdmin()으로 한 번 더 확인하지만(defense in
+                    // depth), 게이트웨이 레벨에서부터 role 기반으로 차단해 컨트롤러 코드가 틀려도
+                    // 관리자 데이터가 새지 않게 한다.
+                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
                     .anyRequest().authenticated()
             }
             // 회원가입/로그인/구독 생성은 IP 기준 rate limit을 JWT 파싱보다 먼저 적용한다

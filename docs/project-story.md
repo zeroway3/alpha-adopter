@@ -255,8 +255,14 @@ alpha-adopter에 실제로 존재하던 문제 5건을 수정했습니다.
   저장(rotation·즉시 revoke 지원)하는 구조로 분리했다. 토큰 저장 위치도 `localStorage`에서
   httpOnly + `SameSite=Strict` 쿠키로 전환해 XSS 노출 표면을 제거했다(`AuthCookies`,
   `RefreshTokenService`).
-- **Role 기반 인가 없음**: 관리자 여부가 DB가 아니라 배포 환경변수 화이트리스트. 지금
-  규모엔 합리적이지만 "RBAC 설계"라고는 말할 수 없음.
+- ~~**Role 기반 인가 없음**~~: (2026-09-25 해결) `User`에 `role`(USER/ADMIN) 컬럼을 추가해
+  관리자 여부의 근거를 배포 환경변수 화이트리스트에서 DB로 옮겼다. JWT에 `role` 클레임을
+  실어 `JwtAuthFilter`가 `GrantedAuthority("ROLE_ADMIN")`을 채우고, `SecurityConfig`가
+  `/api/admin/**`에 `hasRole("ADMIN")`을 게이트웨이 레벨에서 적용한다(컨트롤러의
+  `requireAdmin()`은 defense-in-depth로 유지). "누구를 관리자로 만들지"는 여전히
+  `app.admin.emails` 환경변수로 재배포 없이 조정할 수 있도록, 기동 시 해당 이메일 계정을
+  ADMIN으로 승격하는 `AdminBootstrapRunner`만 남겼다 — 다만 이 목록에서 빼도 기존 권한이
+  자동 회수되지는 않는다(회수는 DB에서 직접 처리, 관리자 관리 UI는 이 규모에서 아직 불필요).
 - ~~**rate limiting 없음**~~: (2026-09-14 해결) `RateLimitFilter`(`OncePerRequestFilter`)를 도입해
   `/api/auth/signup`·`/api/auth/login`·`/api/subscriptions`(POST)에 IP 기준 고정 윈도우 rate
   limit을 적용했다. `NewsDeduplicationService`와 동일하게 Redis INCR+EXPIRE로 직접 구현해 별도
@@ -299,5 +305,5 @@ alpha-adopter에 실제로 존재하던 문제 5건을 수정했습니다.
 - ~~`/api/admin/stats` Redis 캐싱 (30~60초 TTL)~~ (2026-09-08 완료)
 - ~~Rate limiting (회원가입/로그인/구독 API)~~ (2026-09-14 완료)
 - ~~Refresh Token 도입, JWT `localStorage` → httpOnly 쿠키 전환~~ (2026-09-15 완료)
-- Role 기반 인가(RBAC)로 전환
+- ~~Role 기반 인가(RBAC)로 전환~~ (2026-09-25 완료)
 - Flyway 마이그레이션 도입 (`ddl-auto: update` → `validate` 전환)

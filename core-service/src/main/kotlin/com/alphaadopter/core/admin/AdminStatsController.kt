@@ -7,7 +7,7 @@ import com.alphaadopter.core.domain.notification.NotificationRepository
 import com.alphaadopter.core.domain.subscription.SubscriptionRepository
 import com.alphaadopter.core.domain.user.User
 import com.alphaadopter.core.domain.user.UserRepository
-import com.alphaadopter.core.user.AdminEmailChecker
+import com.alphaadopter.core.domain.user.UserRole
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
@@ -93,16 +93,16 @@ data class AdminDailyCount(val day: LocalDate, val total: Long) {
     }
 }
 
-// 로그인은 JWT로 하지만, 관리자 판별은 별도 Role 테이블 없이 app.admin.emails 화이트리스트로만 한다.
-// 실시간 대시보드(Grafana)는 비용/보안 때문에 공개 노출하지 않고 kubectl port-forward로만 접근 —
-// 이 엔드포인트들은 그 대신 브라우저에서 바로 볼 수 있는 운영 통계/데이터 조회를 제공한다.
+// 관리자 판별은 User.role(DB)로 한다 — SecurityConfig가 게이트웨이 레벨에서 hasRole("ADMIN")로
+// 먼저 막고, requireAdmin()은 그 위에 얹는 defense-in-depth 체크다(둘 중 하나가 뚫려도 나머지가
+// 막아준다). 실시간 대시보드(Grafana)는 비용/보안 때문에 공개 노출하지 않고 kubectl port-forward로만
+// 접근 — 이 엔드포인트들은 그 대신 브라우저에서 바로 볼 수 있는 운영 통계/데이터 조회를 제공한다.
 @RestController
 @RequestMapping("/api/admin")
 class AdminStatsController(
     private val userRepository: UserRepository,
     private val subscriptionRepository: SubscriptionRepository,
     private val notificationRepository: NotificationRepository,
-    private val adminEmailChecker: AdminEmailChecker,
     private val adminStatsService: AdminStatsService,
 ) {
 
@@ -123,7 +123,7 @@ class AdminStatsController(
         return userRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).map { user ->
             AdminUserSummary.from(
                 user = user,
-                isAdmin = adminEmailChecker.isAdmin(user.email),
+                isAdmin = user.role == UserRole.ADMIN,
                 subscriptionCount = subscriptionCountsByUserId[user.id!!] ?: 0L,
             )
         }
@@ -144,7 +144,7 @@ class AdminStatsController(
     }
 
     private fun requireAdmin(principal: AuthPrincipal) {
-        if (!adminEmailChecker.isAdmin(principal.email)) {
+        if (principal.role != UserRole.ADMIN) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 접근할 수 있습니다.")
         }
     }

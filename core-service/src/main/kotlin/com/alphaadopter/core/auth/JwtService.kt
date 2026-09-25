@@ -1,5 +1,6 @@
 package com.alphaadopter.core.auth
 
+import com.alphaadopter.core.domain.user.UserRole
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import org.springframework.beans.factory.annotation.Value
@@ -19,11 +20,12 @@ class JwtService(
     private val key: SecretKey = Keys.hmacShaKeyFor(secret.toByteArray(Charsets.UTF_8))
     private val validity: Duration = Duration.ofMinutes(accessValidityMinutes)
 
-    fun generate(userId: Long, email: String): String {
+    fun generate(userId: Long, email: String, role: UserRole): String {
         val now = Date()
         return Jwts.builder()
             .subject(userId.toString())
             .claim("email", email)
+            .claim("role", role.name)
             .issuedAt(now)
             .expiration(Date(now.time + validity.toMillis()))
             .signWith(key)
@@ -32,6 +34,9 @@ class JwtService(
 
     fun parse(token: String): AuthPrincipal? = runCatching {
         val claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).payload
-        AuthPrincipal(userId = claims.subject.toLong(), email = claims["email"] as String)
+        // role 클레임이 없는 토큰(이 필드 도입 이전에 발급된 것)은 안전하게 USER로 취급한다 —
+        // 권한 상승 방향의 기본값이 아니라 최소 권한 방향의 기본값을 택한다.
+        val role = (claims["role"] as? String)?.let { runCatching { UserRole.valueOf(it) }.getOrNull() } ?: UserRole.USER
+        AuthPrincipal(userId = claims.subject.toLong(), email = claims["email"] as String, role = role)
     }.getOrNull()
 }

@@ -5,6 +5,7 @@ import com.alphaadopter.core.auth.AuthPrincipal
 import com.alphaadopter.core.config.CacheConfig
 import com.alphaadopter.core.domain.user.User
 import com.alphaadopter.core.domain.user.UserRepository
+import com.alphaadopter.core.domain.user.UserRole
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -71,7 +72,7 @@ class AdminStatsCacheTest : IntegrationTestBase() {
         adminStatsService.snapshot()
 
         val ex = assertFailsWith<ResponseStatusException> {
-            adminStatsController.stats(AuthPrincipal(userId = 999L, email = "intruder@example.com"))
+            adminStatsController.stats(AuthPrincipal(userId = 999L, email = "intruder@example.com", role = UserRole.USER))
         }
         assertEquals(HttpStatus.FORBIDDEN, ex.statusCode)
     }

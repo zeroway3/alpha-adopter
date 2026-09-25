@@ -1,0 +1,48 @@
+package com.alphaadopter.core.user
+
+import com.alphaadopter.core.domain.user.User
+import com.alphaadopter.core.domain.user.UserRepository
+import com.alphaadopter.core.domain.user.UserRole
+import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito
+import org.springframework.boot.DefaultApplicationArguments
+import kotlin.test.assertEquals
+
+// ApplicationRunner는 Spring 컨텍스트 기동 시점에 딱 한 번 실행되기 때문에, 무거운
+// IntegrationTestBase(Testcontainers) 없이 run()을 직접 호출해 로직만 검증한다.
+class AdminBootstrapRunnerTest {
+
+    @Test
+    fun `app_admin_emails에 있는 이메일은 대소문자가 달라도 ADMIN으로 승격된다`() {
+        val userRepository = Mockito.mock(UserRepository::class.java)
+        val user = User(email = "Admin@Example.com")
+        Mockito.`when`(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(user)
+
+        AdminBootstrapRunner(userRepository, " admin@example.com ,").run(DefaultApplicationArguments())
+
+        assertEquals(UserRole.ADMIN, user.role)
+        Mockito.verify(userRepository).save(user)
+    }
+
+    @Test
+    fun `이미 ADMIN인 사용자는 다시 저장하지 않는다`() {
+        val userRepository = Mockito.mock(UserRepository::class.java)
+        val user = User(email = "admin@example.com", role = UserRole.ADMIN)
+        Mockito.`when`(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(user)
+
+        AdminBootstrapRunner(userRepository, "admin@example.com").run(DefaultApplicationArguments())
+
+        Mockito.verify(userRepository, Mockito.never()).save(any())
+    }
+
+    @Test
+    fun `목록에 없거나 가입 안 된 이메일은 조용히 건너뛴다`() {
+        val userRepository = Mockito.mock(UserRepository::class.java)
+        Mockito.`when`(userRepository.findByEmailIgnoreCase("nobody@example.com")).thenReturn(null)
+
+        AdminBootstrapRunner(userRepository, "nobody@example.com").run(DefaultApplicationArguments())
+
+        Mockito.verify(userRepository, Mockito.never()).save(any())
+    }
+}

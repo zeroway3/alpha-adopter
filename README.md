@@ -78,7 +78,7 @@
 alpha-adopter/
 ├── docker-compose.yml          # 로컬 개발용 PostgreSQL·MongoDB·Kafka·Redis·Mailpit
 ├── docs/                       # 검증 결과·설계 기록
-│   ├── project-story.md         # 프로젝트 전체 진행 과정 총정리 (이력서/면접용)
+│   ├── project-story.md         # 프로젝트 전체 진행 과정 총정리
 │   ├── phase0-news-source-validation.md
 │   ├── phase5-load-test-observability.md
 │   ├── phase6-ai-relevance-filtering.md   # Claude 기반 관련도 필터: 구조화 출력·캐싱·재시도·계측·eval 튜닝

@@ -250,8 +250,11 @@ alpha-adopter에 실제로 존재하던 문제 5건을 수정했습니다.
 - **투자 조언/매매 시그널 기능 제외**: 자본시장법상 유사투자자문업으로 해석될 수 있어
   스코프에서 명시적으로 배제. 뉴스 원문 전체도 저장·재배포하지 않고 제목/요약/링크 위주로만
   다뤄 저작권 이슈를 피함.
-- **Refresh Token 없음**: JWT 7일 고정 만료, 로그아웃해도 토큰 자체는 만료 전까지 유효.
-  `localStorage` 저장이라 XSS 노출 표면도 있음 — 다음에 붙일 만한 항목으로 인지하고 있음.
+- ~~**Refresh Token 없음**~~: (2026-09-15 해결) JWT access token 유효기간을 7일 고정에서
+  짧은 유효기간(기본 60분)으로 줄이고, opaque random refresh token을 Redis에 SHA-256 해시로
+  저장(rotation·즉시 revoke 지원)하는 구조로 분리했다. 토큰 저장 위치도 `localStorage`에서
+  httpOnly + `SameSite=Strict` 쿠키로 전환해 XSS 노출 표면을 제거했다(`AuthCookies`,
+  `RefreshTokenService`).
 - **Role 기반 인가 없음**: 관리자 여부가 DB가 아니라 배포 환경변수 화이트리스트. 지금
   규모엔 합리적이지만 "RBAC 설계"라고는 말할 수 없음.
 - ~~**rate limiting 없음**~~: (2026-09-14 해결) `RateLimitFilter`(`OncePerRequestFilter`)를 도입해
@@ -295,8 +298,6 @@ alpha-adopter에 실제로 존재하던 문제 5건을 수정했습니다.
 - ~~`/api/notifications` 커서 기반 페이지네이션~~ (2026-09-08 완료)
 - ~~`/api/admin/stats` Redis 캐싱 (30~60초 TTL)~~ (2026-09-08 완료)
 - ~~Rate limiting (회원가입/로그인/구독 API)~~ (2026-09-14 완료)
-- Refresh Token 도입, JWT `localStorage` → httpOnly 쿠키 전환 검토
+- ~~Refresh Token 도입, JWT `localStorage` → httpOnly 쿠키 전환~~ (2026-09-15 완료)
 - Role 기반 인가(RBAC)로 전환
 - Flyway 마이그레이션 도입 (`ddl-auto: update` → `validate` 전환)
-- 알림 개인화 필터링 (읽음/클릭 참여도 데이터는 이미 수집 중, 스코어링 로직은 미구현 —
-  [`docs/future-ideas.md`](future-ideas.md) 참고)

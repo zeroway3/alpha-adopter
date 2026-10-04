@@ -23,9 +23,9 @@
 - 관련 뉴스 발생 시 실시간 알림 전달 (SSE + Redis Pub/Sub)
 - 비회원은 일일 다이제스트 이메일, 회원은 실시간 SSE로 차등 전달 (가입 시 기본 회원 처리라 현재는 사실상 전원 실시간 수신, 비회원 등급은 결제 연동 시 재도입 예정)
 - 알림 읽음/클릭 참여도 기반 개인화: 구독(키워드)별 과거 읽음 비율을 계산해(콜드스타트 시 판단 보류) 일일 다이제스트 발송 시 참여도가 높은 알림을 상단에 배치. 걸러내지 않고 순서만 바꾸는 fail-open 방식 ([설계 기록](docs/future-ideas.md))
-- 이메일+비밀번호 인증 (Spring Security + JWT, BCrypt 해시). SSE는 커스텀 헤더를 못 보내 토큰을 쿼리 파라미터로도 허용
+- 이메일+비밀번호 인증 (Spring Security + JWT, BCrypt 해시). access/refresh 토큰을 httpOnly + SameSite=Strict 쿠키로 전달해 SSE(EventSource)도 별도 처리 없이 쿠키로 인증됨
 - React + TypeScript 프론트엔드 (다크 테마, 사이드바/본문 레이아웃): 회원가입/로그인, 구독 관리, 실시간 알림 피드, 알림 히스토리
-- 관리자 화면: `app.admin.emails` 화이트리스트에 등록된 이메일로 로그인하면 전체 사용자/구독/키워드 통계, 최근 7일 알림 추이, 최근 알림 목록을 볼 수 있음 (로그인은 JWT로 하지만 "관리자 역할" 자체는 별도 Role 테이블 없이 배포 환경변수로만 판단)
+- 관리자 화면: ADMIN role(DB, `User.role`)을 가진 계정으로 로그인하면 전체 사용자/구독/키워드 통계, 최근 7일 알림 추이, 최근 알림 목록을 볼 수 있음. `app.admin.emails`는 배포 시점에 해당 이메일 계정을 ADMIN으로 승격하는 부트스트랩 용도로만 쓰이고, 실제 인가는 Spring Security의 `hasRole("ADMIN")` 규칙이 게이트웨이 레벨에서 수행
 
 투자 조언·매매 시그널 등 자본시장법상 유사투자자문업으로 해석될 수 있는 기능은 스코프에서 명시적으로 제외합니다. 뉴스 원문 전체를 저장·재배포하지 않고 제목·요약·링크 위주로 다뤄 저작권 이슈를 피합니다. `ANTHROPIC_API_KEY`/`VOYAGE_API_KEY`가 없는 환경(예: 기여자 로컬)에서는 AI 필터/중복 제거가 각각 자동으로 비활성화되고 기존 문자열 매칭 결과를 그대로 신뢰합니다(fail-open).
 
@@ -67,7 +67,7 @@
 | IaC | Terraform | |
 | 관측성 | Prometheus, Grafana (Micrometer) | 분산 트레이싱(OpenTelemetry)은 현재 범위 밖 — 향후 과제 |
 | 부하테스트 | k6 | |
-| 인증 | Spring Security + JWT | 세션/쿠키 없는 stateless API, 관리자 역할은 별도 Role 테이블 없이 이메일 화이트리스트로 판단 |
+| 인증 | Spring Security + JWT | Stateless API(서버 세션 저장 없음), access/refresh 토큰은 httpOnly 쿠키로 전달. 관리자 역할은 DB(`User.role`) 기반 RBAC로 판단하고 `hasRole("ADMIN")`으로 게이트웨이 레벨 인가 |
 | AI (관련도 판단) | Claude Haiku (Anthropic API) | 키워드 문자열 매칭 위에 얹는 2차 관련도 필터. tool use 구조화 출력, 프롬프트 인젝션 방어, Redis 캐싱, 429 재시도, Micrometer 계측. API 키 없으면 자동 비활성화 |
 | AI (중복 제거) | Voyage AI (voyage-4-lite) | 기사 임베딩 → 코사인 유사도로 같은 사건의 중복 보도 감지. API 키 없으면 자동 비활성화 |
 | 테스트 | Testcontainers(Kafka/Postgres/Mongo/Redis/Mailpit), vitest | 로컬 인프라 없이 CI에서 실제 컨테이너로 통합테스트 |
@@ -107,8 +107,8 @@ alpha-adopter/
         │   ├── notification/    # 실시간 알림 전달(SSE + Redis Pub/Sub), 일일 다이제스트 이메일, 읽음/클릭 참여도 추적, 알림 히스토리 조회
         │   ├── subscription/    # 구독 등록/조회/삭제 REST API, 메모리 구독 캐시 (SubscriptionCache)
         │   ├── auth/            # 회원가입/로그인(JWT 발급), Spring Security 설정, JWT 인증 필터
-        │   ├── user/            # 관리자 이메일 화이트리스트 판별
-        │   ├── admin/           # 관리자 전용 통계/데이터 API (사용자·키워드·일별 추이·최근 알림, 화이트리스트 기반 접근 제어)
+        │   ├── user/            # 관리자 승격 부트스트랩(AdminBootstrapRunner, 배포 환경변수 기반 idempotent grant)
+        │   ├── admin/           # 관리자 전용 통계/데이터 API (사용자·키워드·일별 추이·최근 알림, DB role 기반 접근 제어)
         │   └── config/          # Kafka 토픽 등 설정
         └── resources/static/    # 빌드 산출물 전용 디렉터리 (git에는 커밋되지 않음, frontend/의 `npm run build`가 채움)
 ```

@@ -2,7 +2,7 @@ package com.alphaadopter.core.auth
 
 import com.alphaadopter.core.domain.user.User
 import com.alphaadopter.core.domain.user.UserRepository
-import com.alphaadopter.core.user.AdminEmailChecker
+import com.alphaadopter.core.domain.user.UserRole
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Email
@@ -53,7 +53,6 @@ class AuthController(
     private val jwtService: JwtService,
     private val refreshTokenService: RefreshTokenService,
     private val authCookies: AuthCookies,
-    private val adminEmailChecker: AdminEmailChecker,
 ) {
 
     @PostMapping("/signup")
@@ -118,7 +117,7 @@ class AuthController(
     }
 
     private fun issueAuthCookies(response: HttpServletResponse, user: User) {
-        val accessToken = jwtService.generate(user.id!!, user.email)
+        val accessToken = jwtService.generate(user.id!!, user.email, user.role)
         val refreshToken = refreshTokenService.issue(user.id!!)
         response.addHeader(HttpHeaders.SET_COOKIE, authCookies.access(accessToken).toString())
         response.addHeader(HttpHeaders.SET_COOKIE, authCookies.refresh(refreshToken).toString())
@@ -128,6 +127,6 @@ class AuthController(
         id = user.id!!,
         email = user.email,
         isMember = user.isMember,
-        isAdmin = adminEmailChecker.isAdmin(user.email),
+        isAdmin = user.role == UserRole.ADMIN,
     )
 }

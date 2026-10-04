@@ -2,6 +2,8 @@ package com.alphaadopter.core.domain.user
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -22,6 +24,12 @@ class User(
     // 이메일+비밀번호 인증 도입 (BCrypt 해시). null이면 로그인 불가 — 인증 도입 이전 데이터 호환용
     @Column(name = "password_hash")
     var passwordHash: String? = null,
+
+    // 관리자 여부를 배포 환경변수 화이트리스트가 아니라 DB로 판단하기 위한 필드(AdminBootstrapRunner
+    // 참고). columnDefinition의 DEFAULT 덕분에 ddl-auto=update가 기존 행에도 'USER'를 채운다.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "varchar(20) default 'USER'")
+    var role: UserRole = UserRole.USER,
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

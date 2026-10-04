@@ -5,6 +5,8 @@ import com.alphaadopter.core.domain.notification.DailyNotificationCount
 import com.alphaadopter.core.domain.notification.Notification
 import com.alphaadopter.core.domain.notification.NotificationRepository
 import com.alphaadopter.core.domain.subscription.SubscriptionRepository
+import com.alphaadopter.core.domain.user.AdminAuditLog
+import com.alphaadopter.core.domain.user.AdminAuditLogRepository
 import com.alphaadopter.core.domain.user.User
 import com.alphaadopter.core.domain.user.UserRepository
 import com.alphaadopter.core.domain.user.UserRole
@@ -86,6 +88,28 @@ data class AdminUserSummary(
 
 data class AdminKeywordSummary(val keyword: String, val subscriberCount: Long)
 
+data class AdminAuditLogSummary(
+    val id: Long,
+    val targetEmail: String,
+    val previousRole: String,
+    val newRole: String,
+    val changedBy: String,
+    val reason: String,
+    val createdAt: Instant,
+) {
+    companion object {
+        fun from(log: AdminAuditLog) = AdminAuditLogSummary(
+            id = log.id!!,
+            targetEmail = log.targetEmail,
+            previousRole = log.previousRole,
+            newRole = log.newRole,
+            changedBy = log.changedBy,
+            reason = log.reason,
+            createdAt = log.createdAt,
+        )
+    }
+}
+
 data class AdminDailyCount(val day: LocalDate, val total: Long) {
     companion object {
         fun from(row: DailyNotificationCount) =
@@ -103,6 +127,7 @@ class AdminStatsController(
     private val userRepository: UserRepository,
     private val subscriptionRepository: SubscriptionRepository,
     private val notificationRepository: NotificationRepository,
+    private val adminAuditLogRepository: AdminAuditLogRepository,
     private val adminStatsService: AdminStatsService,
 ) {
 
@@ -141,6 +166,15 @@ class AdminStatsController(
         requireAdmin(principal)
         val since = Instant.now().truncatedTo(ChronoUnit.DAYS).minus(6, ChronoUnit.DAYS)
         return notificationRepository.dailyCountsSince(since).map(AdminDailyCount::from)
+    }
+
+    // 관리자 권한이 언제·누구에게·왜 부여됐는지 조회. 지금은 AdminBootstrapRunner만 이 로그를
+    // 남기지만, 이후 관리자 승격/강등 API가 생기면 그 변경도 같은 테이블에 쌓이게 된다.
+    @GetMapping("/audit-logs")
+    fun auditLogs(@AuthenticationPrincipal principal: AuthPrincipal): List<AdminAuditLogSummary> {
+        requireAdmin(principal)
+        return adminAuditLogRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
+            .map(AdminAuditLogSummary::from)
     }
 
     private fun requireAdmin(principal: AuthPrincipal) {

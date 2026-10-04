@@ -1,5 +1,7 @@
 package com.alphaadopter.core.user
 
+import com.alphaadopter.core.domain.user.AdminAuditLog
+import com.alphaadopter.core.domain.user.AdminAuditLogRepository
 import com.alphaadopter.core.domain.user.UserRepository
 import com.alphaadopter.core.domain.user.UserRole
 import org.slf4j.LoggerFactory
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional
 @Component
 class AdminBootstrapRunner(
     private val userRepository: UserRepository,
+    private val adminAuditLogRepository: AdminAuditLogRepository,
     @Value("\${app.admin.emails:}") adminEmailsRaw: String,
 ) : ApplicationRunner {
 
@@ -32,8 +35,19 @@ class AdminBootstrapRunner(
         adminEmails.forEach { email ->
             val user = userRepository.findByEmailIgnoreCase(email) ?: return@forEach
             if (user.role != UserRole.ADMIN) {
+                val previousRole = user.role
                 user.role = UserRole.ADMIN
                 userRepository.save(user)
+                adminAuditLogRepository.save(
+                    AdminAuditLog(
+                        targetUserId = user.id!!,
+                        targetEmail = user.email,
+                        previousRole = previousRole.name,
+                        newRole = UserRole.ADMIN.name,
+                        changedBy = "AdminBootstrapRunner",
+                        reason = "app.admin.emails 부트스트랩",
+                    ),
+                )
                 log.info("app.admin.emails 목록에 따라 {}을(를) 관리자로 승격했습니다", email)
             }
         }

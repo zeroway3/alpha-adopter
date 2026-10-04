@@ -263,6 +263,9 @@ alpha-adopter에 실제로 존재하던 문제 5건을 수정했습니다.
   `app.admin.emails` 환경변수로 재배포 없이 조정할 수 있도록, 기동 시 해당 이메일 계정을
   ADMIN으로 승격하는 `AdminBootstrapRunner`만 남겼다 — 다만 이 목록에서 빼도 기존 권한이
   자동 회수되지는 않는다(회수는 DB에서 직접 처리, 관리자 관리 UI는 이 규모에서 아직 불필요).
+  (2026-10-04 추가) 권한 변경을 애플리케이션 로그(재시작하면 흩어짐)가 아니라 조회 가능한
+  `admin_audit_logs` 테이블에 남기도록 했다 — 누가/언제/어떤 이유로 ADMIN이 됐는지를
+  `GET /api/admin/audit-logs`로 확인할 수 있다.
 - ~~**rate limiting 없음**~~: (2026-09-14 해결) `RateLimitFilter`(`OncePerRequestFilter`)를 도입해
   `/api/auth/signup`·`/api/auth/login`·`/api/subscriptions`(POST)에 IP 기준 고정 윈도우 rate
   limit을 적용했다. `NewsDeduplicationService`와 동일하게 Redis INCR+EXPIRE로 직접 구현해 별도

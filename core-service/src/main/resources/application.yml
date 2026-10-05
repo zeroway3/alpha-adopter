@@ -114,6 +114,9 @@ app:
     dedup-window-hours: ${AI_DEDUP_WINDOW_HOURS:48}
     # 윈도우 안에서 최대 이만큼의 최근 기사와만 비교한다(브루트포스 비교 비용 상한)
     dedup-max-candidates: ${AI_DEDUP_MAX_CANDIDATES:200}
+    # UserInvestigationAgent(관리자 이상탐지 조사 에이전트)가 report_verdict 없이 도구만
+    # 반복 호출할 경우의 안전장치 — 이 횟수를 넘기면 강제로 조사를 중단하고 INCONCLUSIVE 처리한다
+    agent-max-iterations: ${AI_AGENT_MAX_ITERATIONS:5}
   kafka:
     topic:
       news-raw: news.raw

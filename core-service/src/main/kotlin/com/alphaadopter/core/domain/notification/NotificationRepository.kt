@@ -51,6 +51,23 @@ interface NotificationRepository : JpaRepository<Notification, Long> {
     @Query("SELECT COUNT(n) FROM Notification n WHERE n.status = :status AND n.subscription.id = :subscriptionId")
     fun countByStatusAndSubscriptionId(status: NotificationStatus, subscriptionId: Long): Long
 
+    // UserInvestigationAgent의 engagement 조사 도구 전용 — PersonalizationScorer의 구독 단위
+    // 집계와 같은 패턴을 유저 단위로 넓힌 것 (알림을 거의 안 읽는 계정인지 확인하는 용도)
+    @Query("SELECT COUNT(n) FROM Notification n WHERE n.status = :status AND n.subscription.user.id = :userId")
+    fun countByStatusAndSubscriptionUserId(status: NotificationStatus, userId: Long): Long
+
+    @Query(
+        "SELECT COUNT(n) FROM Notification n " +
+            "WHERE n.status = :status AND n.subscription.user.id = :userId AND n.readAt IS NOT NULL",
+    )
+    fun countByStatusAndSubscriptionUserIdAndReadAtIsNotNull(status: NotificationStatus, userId: Long): Long
+
+    @Query(
+        "SELECT COUNT(n) FROM Notification n " +
+            "WHERE n.status = :status AND n.subscription.user.id = :userId AND n.clickedAt IS NOT NULL",
+    )
+    fun countByStatusAndSubscriptionUserIdAndClickedAtIsNotNull(status: NotificationStatus, userId: Long): Long
+
     @Query(
         "SELECT COUNT(n) FROM Notification n " +
             "WHERE n.status = :status AND n.subscription.id = :subscriptionId AND n.readAt IS NOT NULL",

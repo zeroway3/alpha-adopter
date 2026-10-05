@@ -25,7 +25,8 @@
 - 알림 읽음/클릭 참여도 기반 개인화: 구독(키워드)별 과거 읽음 비율을 계산해(콜드스타트 시 판단 보류) 일일 다이제스트 발송 시 참여도가 높은 알림을 상단에 배치. 걸러내지 않고 순서만 바꾸는 fail-open 방식 ([설계 기록](docs/future-ideas.md))
 - 이메일+비밀번호 인증 (Spring Security + JWT, BCrypt 해시). access/refresh 토큰을 httpOnly + SameSite=Strict 쿠키로 전달해 SSE(EventSource)도 별도 처리 없이 쿠키로 인증됨
 - React + TypeScript 프론트엔드 (다크 테마, 사이드바/본문 레이아웃): 회원가입/로그인, 구독 관리, 실시간 알림 피드, 알림 히스토리
-- 관리자 화면: ADMIN role(DB, `User.role`)을 가진 계정으로 로그인하면 전체 사용자/구독/키워드 통계, 최근 7일 알림 추이, 최근 알림 목록을 볼 수 있음. `app.admin.emails`는 배포 시점에 해당 이메일 계정을 ADMIN으로 승격하는 부트스트랩 용도로만 쓰이고, 실제 인가는 Spring Security의 `hasRole("ADMIN")` 규칙이 게이트웨이 레벨에서 수행
+- 관리자 화면: ADMIN role(DB, `User.role`)을 가진 계정으로 로그인하면 전체 사용자/구독/키워드 통계, 최근 7일 알림 추이, 최근 알림 목록을 볼 수 있음. `app.admin.emails`는 배포 시점에 해당 이메일 계정을 ADMIN으로 승격하는 부트스트랩 용도로만 쓰이고, 실제 인가는 Spring Security의 `hasRole("ADMIN")` 규칙이 게이트웨이 레벨에서 수행. 권한 변경은 `admin_audit_logs`에 기록되어 `GET /api/admin/audit-logs`로 조회 가능
+- 관리자용 사용자 이상탐지 에이전트: 단발성 tool use가 아니라 모델이 스스로 어떤 도구를 몇 번 호출할지 판단하는 멀티스텝 에이전트 루프(ReAct 패턴)로, 가입 직후 비정상적으로 빠른 다수 구독(NAVER API 할당량 위협)이나 알림을 전혀 안 읽는 비실사용 패턴을 조사해 위험도·근거·권장 조치를 보고함. 읽기 전용 도구만 제공하고 계정 조치는 직접 실행하지 않으며(사람이 최종 판단), 결론 없이 도구만 반복 호출하면 최대 반복 횟수에서 강제 종료해 INCONCLUSIVE로 떨어뜨림
 
 투자 조언·매매 시그널 등 자본시장법상 유사투자자문업으로 해석될 수 있는 기능은 스코프에서 명시적으로 제외합니다. 뉴스 원문 전체를 저장·재배포하지 않고 제목·요약·링크 위주로 다뤄 저작권 이슈를 피합니다. `ANTHROPIC_API_KEY`/`VOYAGE_API_KEY`가 없는 환경(예: 기여자 로컬)에서는 AI 필터/중복 제거가 각각 자동으로 비활성화되고 기존 문자열 매칭 결과를 그대로 신뢰합니다(fail-open).
 
@@ -104,6 +105,7 @@ alpha-adopter/
         │   ├── collector/       # NAVER 뉴스 수집 (NaverNewsClient, 스케줄러)
         │   ├── pipeline/        # Kafka 컨슈머, MongoDB 원본 저장, 매칭 엔진, 구독 캐시 기반 매칭
         │   ├── ai/              # Claude 기반 관련도 판단(2차 노이즈 필터) + Voyage 임베딩 기반 중복 제거
+        │   │   └── agent/       # 멀티스텝 에이전트 루프(UserInvestigationAgent) — 관리자용 사용자 이상탐지 조사
         │   ├── notification/    # 실시간 알림 전달(SSE + Redis Pub/Sub), 일일 다이제스트 이메일, 읽음/클릭 참여도 추적, 알림 히스토리 조회
         │   ├── subscription/    # 구독 등록/조회/삭제 REST API, 메모리 구독 캐시 (SubscriptionCache)
         │   ├── auth/            # 회원가입/로그인(JWT 발급), Spring Security 설정, JWT 인증 필터

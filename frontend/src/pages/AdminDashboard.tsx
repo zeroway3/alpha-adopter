@@ -2,11 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "../api/client";
 import { SessionExpiredError } from "../api/client";
 import type {
+  AdminAuditLogSummary,
   AdminDailyCount,
   AdminKeywordSummary,
   AdminStatsResponse,
   AdminUserSummary,
+  InvestigationResponse,
   NotificationStatus,
+  RiskLevel,
 } from "../api/types";
 import { Icon, type IconName } from "../icons/Icon";
 
@@ -35,6 +38,22 @@ function PersonalizationBadge({ score }: { score: number | null }) {
   const pct = Math.round(score * 100);
   const variant = pct >= 70 ? "badge-success" : pct >= 40 ? "badge-warning" : "badge-danger";
   return <span className={`badge ${variant}`}>{pct}%</span>;
+}
+
+function RiskBadge({ riskLevel }: { riskLevel: RiskLevel }) {
+  const map: Record<RiskLevel, string> = {
+    LOW: "badge-success",
+    MEDIUM: "badge-warning",
+    HIGH: "badge-danger",
+    INCONCLUSIVE: "badge-default",
+  };
+  const label: Record<RiskLevel, string> = {
+    LOW: "낮음",
+    MEDIUM: "보통",
+    HIGH: "높음",
+    INCONCLUSIVE: "조사 불가",
+  };
+  return <span className={`badge ${map[riskLevel]}`}>{label[riskLevel]}</span>;
 }
 
 interface StatBox {
@@ -76,8 +95,15 @@ export function AdminDashboard({ onSessionExpired }: Props) {
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [keywords, setKeywords] = useState<AdminKeywordSummary[]>([]);
   const [daily, setDaily] = useState<AdminDailyCount[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLogSummary[]>([]);
   const [serverUp, setServerUp] = useState<boolean | null>(null);
   const [now, setNow] = useState(() => new Date());
+
+  // 조사 중인 userId(로딩 상태 표시용)와, 가장 최근 조사 결과를 함께 보관한다 — 여러 유저를
+  // 연달아 조사할 수 있으므로 결과에 대상 이메일을 같이 담아둔다.
+  const [investigatingUserId, setInvestigatingUserId] = useState<number | null>(null);
+  const [investigation, setInvestigation] = useState<{ email: string; result: InvestigationResponse } | null>(null);
+  const [investigationError, setInvestigationError] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -100,16 +126,18 @@ export function AdminDashboard({ onSessionExpired }: Props) {
 
   const refresh = useCallback(async () => {
     try {
-      const [s, u, k, d] = await Promise.all([
+      const [s, u, k, d, a] = await Promise.all([
         api.loadAdminStats(),
         api.loadAdminUsers(),
         api.loadAdminKeywords(),
         api.loadAdminDaily(),
+        api.loadAdminAuditLogs(),
       ]);
       setStats(s);
       setUsers(u);
       setKeywords(k);
       setDaily(d);
+      setAuditLogs(a);
     } catch (err) {
       if (err instanceof SessionExpiredError) onSessionExpired();
       else console.error(err);
@@ -119,6 +147,24 @@ export function AdminDashboard({ onSessionExpired }: Props) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  async function handleInvestigate(user: AdminUserSummary) {
+    setInvestigatingUserId(user.id);
+    setInvestigationError(null);
+    try {
+      const result = await api.investigateUser(user.id);
+      setInvestigation({ email: user.email, result });
+    } catch (err) {
+      if (err instanceof SessionExpiredError) {
+        onSessionExpired();
+        return;
+      }
+      setInvestigationError(err instanceof Error ? err.message : String(err));
+      setInvestigation(null);
+    } finally {
+      setInvestigatingUserId(null);
+    }
+  }
 
   const maxDaily = Math.max(...daily.map((d) => d.total), 1);
 
@@ -229,8 +275,38 @@ export function AdminDashboard({ onSessionExpired }: Props) {
           <span className="card-icon tint-violet">
             <Icon name="users" />
           </span>
-          <div className="card-title">전체 사용자</div>
+          <div>
+            <div className="card-title">전체 사용자</div>
+            <div className="card-subtitle">
+              "조사" 버튼을 누르면 AI 에이전트가 가입 정보·구독 활동·참여도를 스스로 조사해 위험도를 보고합니다
+              — 계정 조치는 직접 실행하지 않고 결과만 보고합니다.
+            </div>
+          </div>
         </div>
+
+        {investigationError && <p className="form-error">{investigationError}</p>}
+
+        {investigation && (
+          <div className="card" style={{ background: "var(--paper-2)", marginBottom: "1rem" }}>
+            <div className="card-header" style={{ justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <span className="card-title">{investigation.email} 조사 결과</span>
+                <RiskBadge riskLevel={investigation.result.riskLevel} />
+              </div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setInvestigation(null)}>
+                닫기
+              </button>
+            </div>
+            <p>
+              <b>근거</b> — {investigation.result.reasoning || "(근거 없음)"}
+            </p>
+            <p>
+              <b>권장 조치</b> — {investigation.result.recommendedAction || "-"}
+            </p>
+            <p className="ops-note">도구 호출 {investigation.result.toolCallsUsed}회 후 보고됨</p>
+          </div>
+        )}
+
         <div className="table-card">
           <div className="table-scroll">
             <table className="data-table">
@@ -241,6 +317,7 @@ export function AdminDashboard({ onSessionExpired }: Props) {
                   <th>관리자</th>
                   <th>구독 수</th>
                   <th>가입일</th>
+                  <th>AI 조사</th>
                 </tr>
               </thead>
               <tbody>
@@ -251,6 +328,63 @@ export function AdminDashboard({ onSessionExpired }: Props) {
                     <td>{u.isAdmin ? "O" : "-"}</td>
                     <td>{u.subscriptionCount}</td>
                     <td>{formatTime(u.createdAt)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        disabled={investigatingUserId === u.id}
+                        onClick={() => handleInvestigate(u)}
+                      >
+                        {investigatingUserId === u.id ? "조사 중..." : "조사"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="card-header">
+          <span className="card-icon tint-emerald">
+            <Icon name="lock" />
+          </span>
+          <div>
+            <div className="card-title">관리자 권한 변경 감사 로그</div>
+            <div className="card-subtitle">누가·언제·어떤 이유로 관리자 권한을 받았는지의 전체 이력</div>
+          </div>
+        </div>
+        <div className="table-card">
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>대상</th>
+                  <th>이전 역할</th>
+                  <th>이후 역할</th>
+                  <th>변경 주체</th>
+                  <th>이유</th>
+                  <th>시각</th>
+                </tr>
+              </thead>
+              <tbody>
+                {auditLogs.length === 0 && (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", color: "var(--text-faint)", padding: "2rem 1rem" }}>
+                      권한 변경 이력이 없습니다.
+                    </td>
+                  </tr>
+                )}
+                {auditLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td>{log.targetEmail}</td>
+                    <td>{log.previousRole}</td>
+                    <td>{log.newRole}</td>
+                    <td>{log.changedBy}</td>
+                    <td>{log.reason}</td>
+                    <td>{formatTime(log.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>

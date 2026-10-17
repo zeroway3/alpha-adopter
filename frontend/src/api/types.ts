@@ -95,3 +95,24 @@ export interface MatchedNotificationEvent {
   link: string;
   personalizationScore: number | null;
 }
+
+// UserInvestigationAgent가 report_verdict 도구 호출로 보고하는 결론. INCONCLUSIVE는 API 키
+// 없음/최대 반복 초과/도구만 반복 호출 등 여러 fail-open 경로가 전부 수렴하는 값이다.
+export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "INCONCLUSIVE";
+
+export interface InvestigationResponse {
+  riskLevel: RiskLevel;
+  reasoning: string;
+  recommendedAction: string;
+  toolCallsUsed: number;
+}
+
+export interface AdminAuditLogSummary {
+  id: number;
+  targetEmail: string;
+  previousRole: string;
+  newRole: string;
+  changedBy: string;
+  reason: string;
+  createdAt: string;
+}

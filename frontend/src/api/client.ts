@@ -1,8 +1,10 @@
 import type {
+  AdminAuditLogSummary,
   AdminDailyCount,
   AdminKeywordSummary,
   AdminStatsResponse,
   AdminUserSummary,
+  InvestigationResponse,
   NotificationHistoryPage,
   Session,
   Subscription,
@@ -137,6 +139,19 @@ export async function loadAdminKeywords(): Promise<AdminKeywordSummary[]> {
 
 export async function loadAdminDaily(): Promise<AdminDailyCount[]> {
   const res = await authFetch("/api/admin/stats/daily");
+  return res.json();
+}
+
+// UserInvestigationAgent를 호출한다 — 모델이 도구를 몇 번 호출할지 스스로 판단하는 루프라,
+// 단순 통계 조회보다 응답이 느릴 수 있다(최대 반복 횟수만큼 Claude API를 왕복할 수 있음).
+export async function investigateUser(userId: number): Promise<InvestigationResponse> {
+  const res = await authFetch(`/api/admin/users/${userId}/investigate`, { method: "POST" });
+  if (!res.ok) throw new Error(await readErrorMessage(res, "사용자 조사 실패"));
+  return res.json();
+}
+
+export async function loadAdminAuditLogs(): Promise<AdminAuditLogSummary[]> {
+  const res = await authFetch("/api/admin/audit-logs");
   return res.json();
 }
 

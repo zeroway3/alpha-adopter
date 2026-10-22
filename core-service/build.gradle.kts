@@ -27,6 +27,14 @@ repositories {
 ext["tomcat.version"] = "11.0.27"
 
 dependencies {
+	// kafka-clients 4.2.1이 끌어오는 at.yawk.lz4:lz4-java 1.10.1에 high CVE(공유 임시
+	// 디렉터리에 추출한 네이티브 라이브러리를 다른 로컬 사용자가 교체 가능, GHSA-mcr4-qmvw-px4g)가
+	// 있고 1.11.4부터 패치됨. 이건 Spring Boot BOM이 아니라 Kafka 클라이언트의 전이 의존성이라
+	// 일반 constraints로 오버라이드가 먹힌다(Tomcat 케이스와 달리 BOM에 안 덮어써짐).
+	constraints {
+		implementation("at.yawk.lz4:lz4-java:1.12.1")
+	}
+
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")

@@ -332,4 +332,13 @@ tool use였다. 관리자가 특정 사용자의 활동이 의심스러운지 �
   "새로 들어오는 것"과 "이미 있다가 나중에 터지는 것"을 커버 범위가 겹치지 않는 두 메커니즘으로
   나눈 이유: dependency-review는 PR diff만 보기 때문에 아무 변경 없이 가만히 있던 의존성에서
   나중에 CVE가 공개되는 경우를 못 잡음 — 그건 주기적으로 도는 Dependabot 쪽 역할.
+  설정하자마자 GitHub이 main에서 기존 취약점 16건(critical 3건 포함)을 바로 찾아냈는데, 전부
+  frontend devDependencies(vite/vitest 계열 — 운영 번들에 안 들어가고 로컬 dev 서버·테스트
+  러너에만 쓰임)였다. `npm audit fix --force`로 vite 5→6, vitest 2→4 메이저 업그레이드하고
+  타입체크·테스트·프로덕션 빌드까지 전부 통과 확인한 뒤 0건으로 정리. 다만 스캐너를 붙이고
+  보니 GitHub Dependency Graph가 core-service(Gradle)는 아예 인식을 못 하고 있었다 —
+  의존성 버전 상당수가 Spring Boot BOM으로 관리돼서 build.gradle.kts를 정적으로 읽기만
+  해서는 실제 버전을 알 수 없기 때문. `gradle/actions/dependency-submission`으로 실제
+  Gradle을 돌려 해석한 그래프를 PR 시점과 main 푸시 시점 둘 다에 제출하도록 고쳐서,
+  frontend만이 아니라 core-service도 스캔 대상에 들어오게 했다.
 - Flyway 마이그레이션 도입 (`ddl-auto: update` → `validate` 전환)

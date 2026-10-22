@@ -340,5 +340,12 @@ tool use였다. 관리자가 특정 사용자의 활동이 의심스러운지 �
   의존성 버전 상당수가 Spring Boot BOM으로 관리돼서 build.gradle.kts를 정적으로 읽기만
   해서는 실제 버전을 알 수 없기 때문. `gradle/actions/dependency-submission`으로 실제
   Gradle을 돌려 해석한 그래프를 PR 시점과 main 푸시 시점 둘 다에 제출하도록 고쳐서,
-  frontend만이 아니라 core-service도 스캔 대상에 들어오게 했다.
+  frontend만이 아니라 core-service도 스캔 대상에 들어오게 했더니, 첫 실행에서 바로 운영
+  서버가 실제로 쓰는 내장 Tomcat(`tomcat-embed-core`)의 critical CVE 3건(인가 우회 2건 +
+  DIGEST 인증 재전송 우회 1건, 11.0.24 → 11.0.25에서 패치)을 찾아냈다. Spring Boot의
+  `io.spring.dependency-management` 플러그인이 관리하는 버전이라 일반 Gradle
+  `constraints {}`로는 BOM에 덮어써져 효과가 없었고(11.0.27로 지정해도 도로 11.0.24로
+  깎이는 걸 실제로 확인), Spring Boot가 문서화한 `tomcat.version` 프로퍼티 오버라이드로
+  11.0.27까지 올려서 해결했다. frontend 쪽 16건은 전부 dev 전용 도구였지만, 이건 처음으로
+  "스캐너를 안 붙였으면 몰랐을 운영 서버의 실제 취약점"을 잡은 사례.
 - Flyway 마이그레이션 도입 (`ddl-auto: update` → `validate` 전환)

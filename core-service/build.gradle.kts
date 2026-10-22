@@ -26,6 +26,12 @@ repositories {
 // `tomcat.version` 프로퍼티를 직접 지정해야 Boot의 다음 패치 릴리스를 기다리지 않고 올라간다.
 ext["tomcat.version"] = "11.0.27"
 
+// jackson-core 3.1.5(Spring Boot 4.1.1이 관리하는 jackson-bom.version)에 high CVE 2건 —
+// ReDoS(GHSA-p6pp-m3f8-5c89), 에러 토큰 길이 미제한으로 인한 DoS(GHSA-7hhh-6rmp-j9qf).
+// Tomcat과 같은 이유로 일반 constraints는 안 먹혀서(BOM에 덮어써짐) jackson-bom.version
+// 프로퍼티를 직접 지정한다. 3.1.7부터 패치돼 같은 마이너 라인의 최신 패치로 올림.
+ext["jackson-bom.version"] = "3.1.8"
+
 dependencies {
 	// kafka-clients 4.2.1이 끌어오는 at.yawk.lz4:lz4-java 1.10.1에 high CVE(공유 임시
 	// 디렉터리에 추출한 네이티브 라이브러리를 다른 로컬 사용자가 교체 가능, GHSA-mcr4-qmvw-px4g)가

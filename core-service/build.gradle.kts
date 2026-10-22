@@ -19,6 +19,13 @@ repositories {
 	mavenCentral()
 }
 
+// Spring Boot 4.1.1이 io.spring.dependency-management로 관리하는 Tomcat 버전(11.0.24)에
+// critical CVE 3건(인증 우회·인가 우회, GHSA-gcx9-497g-6cp6/9xv2-5v5q-p794/h3x4-894j-xpx5)이
+// 있고 11.0.25부터 패치됨. 일반 Gradle `constraints {}`는 이 플러그인의 BOM에 덮어써져 효과가
+// 없었다(실제로 겪음, 11.0.27 -> 11.0.24로 도로 깎임) — Spring Boot BOM이 문서화한 대로
+// `tomcat.version` 프로퍼티를 직접 지정해야 Boot의 다음 패치 릴리스를 기다리지 않고 올라간다.
+ext["tomcat.version"] = "11.0.27"
+
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-data-mongodb")

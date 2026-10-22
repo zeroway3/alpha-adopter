@@ -33,6 +33,11 @@ jobs:
         uses: gradle/actions/dependency-submission@v4
         with:
           build-root-directory: core-service
+          # 필터 없이 전체 제출하면 앱이 실제로 쓰는 configuration뿐 아니라 Gradle
+          # buildscript/플러그인 classpath(spring-boot-gradle-plugin 등이 빌드 시점에만
+          # 쓰는 jackson-core 등)까지 같이 들어가 배포되지도 않는 빌드 전용 취약점으로
+          # PR 체크가 실패하는 걸 실제로 겪었다. 앱이 실제로 쓰는 4개 configuration만 남긴다.
+          dependency-graph-include-configurations: "^(compileClasspath|runtimeClasspath|testCompileClasspath|testRuntimeClasspath)$"
 
       - name: Dependency Review
         uses: actions/dependency-review-action@v4

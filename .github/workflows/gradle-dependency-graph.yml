@@ -30,3 +30,6 @@ jobs:
         uses: gradle/actions/dependency-submission@v4
         with:
           build-root-directory: core-service
+          # dependency-review.yml과 동일한 이유로 앱이 실제로 쓰는 configuration만 제출한다
+          # (buildscript/플러그인 classpath의 빌드 전용 의존성을 Dependabot 대상에서 제외).
+          dependency-graph-include-configurations: "^(compileClasspath|runtimeClasspath|testCompileClasspath|testRuntimeClasspath)$"

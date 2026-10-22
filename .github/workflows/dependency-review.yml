@@ -1,0 +1,24 @@
+name: Dependency review
+
+# PR이 새로 추가/변경하는 의존성을 GitHub Advisory Database와 대조해, 알려진 취약점이
+# 있는 패키지가 들어오면 PR 체크를 실패시킨다. Dependabot(.github/dependabot.yml)이
+# "이미 들어와 있는" 의존성의 취약점을 주기적으로 찾아 업데이트 PR을 올리는 것과 달리,
+# 이건 "새로 들어오는" 의존성을 PR 시점에 막는 역할이라 서로 보완적이다.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: always

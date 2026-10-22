@@ -326,4 +326,10 @@ tool use였다. 관리자가 특정 사용자의 활동이 의심스러운지 �
 - ~~Rate limiting (회원가입/로그인/구독 API)~~ (2026-09-14 완료)
 - ~~Refresh Token 도입, JWT `localStorage` → httpOnly 쿠키 전환~~ (2026-09-15 완료)
 - ~~Role 기반 인가(RBAC)로 전환~~ (2026-09-25 완료)
+- ~~의존성 취약점 스캔 CI~~ (2026-10-22 완료) — `dependency-review-action`으로 PR이 새로
+  추가하는 의존성을 GitHub Advisory Database와 대조해 high 이상이면 체크 실패, Dependabot으로
+  이미 들어와 있던 의존성의 CVE도 매주 찾아 업데이트 PR 생성(Gradle/npm/GitHub Actions 전부).
+  "새로 들어오는 것"과 "이미 있다가 나중에 터지는 것"을 커버 범위가 겹치지 않는 두 메커니즘으로
+  나눈 이유: dependency-review는 PR diff만 보기 때문에 아무 변경 없이 가만히 있던 의존성에서
+  나중에 CVE가 공개되는 경우를 못 잡음 — 그건 주기적으로 도는 Dependabot 쪽 역할.
 - Flyway 마이그레이션 도입 (`ddl-auto: update` → `validate` 전환)

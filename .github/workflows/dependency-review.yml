@@ -17,6 +17,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # core-service(Gradle)의 의존성 버전 상당수가 Spring Boot BOM으로 관리돼 build.gradle.kts
+      # 파일만 정적으로 읽어서는 실제 버전을 알 수 없다 — 그래서 GitHub Dependency Graph가
+      # core-service를 전혀 인식하지 못했다(확인 완료). 실제로 Gradle을 돌려 해석된 의존성
+      # 그래프를 제출해야 dependency-review-action과 Dependabot이 core-service도 볼 수 있다.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Submit core-service Gradle dependency graph
+        uses: gradle/actions/dependency-submission@v4
+        with:
+          build-root-directory: core-service
+
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
         with:

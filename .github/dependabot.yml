@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # core-service (Kotlin/Spring Boot, Gradle)
+  - package-ecosystem: "gradle"
+    directory: "/core-service"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # frontend (React/TypeScript, npm)
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # GitHub Actions 워크플로 자체의 action 버전도 대상에 포함
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

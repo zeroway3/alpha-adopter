@@ -14,12 +14,22 @@ spring:
       idle-timeout: ${DB_POOL_IDLE_TIMEOUT_MS:30000}
   jpa:
     hibernate:
-      # 초기 개발 단계 편의상 update 사용. 도메인 안정화 후 Flyway 마이그레이션 + validate로 전환 예정
-      ddl-auto: update
+      # Flyway가 실제 DDL을 담당하고, Hibernate는 엔티티 매핑이 Flyway가 만든 스키마와
+      # 일치하는지 기동 시점에 검증만 한다(불일치 시 기동 실패) — 둘 중 하나가 스키마를 몰래
+      # 바꾸는 걸 막는 안전장치.
+      ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
+  flyway:
+    # Flyway 도입 이전(ddl-auto: update)부터 이미 떠 있던 환경(배포된 DB 등)은 V1의 내용을
+    # 전부 이미 가지고 있다. baseline-on-migrate가 켜져 있으면, flyway_schema_history 테이블이
+    # 없는 "비어있지 않은" 스키마를 만났을 때 V1을 실제로 재실행하지 않고 "이미 적용됨"으로만
+    # 기록한다. 반대로 완전히 빈 DB(신규 로컬 셋업, 테스트용 Testcontainers)는 이 옵션과 무관하게
+    # V1이 정상적으로 처음부터 실행되어 스키마를 만든다.
+    baseline-on-migrate: true
+    baseline-version: 1
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27018/alpha_adopter}
   mail:

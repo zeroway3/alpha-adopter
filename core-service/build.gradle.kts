@@ -42,6 +42,13 @@ dependencies {
 	}
 
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+	// ddl-auto: update → validate 전환의 일부. Hibernate는 스키마를 검증만 하고, 실제 DDL은
+	// Flyway가 db/migration의 SQL 파일로 명시적으로 실행한다. Spring Boot 4.x부터
+	// autoconfigure가 기능별로 쪼개져서 flyway-core만으로는 자동설정이 안 붙는다 — 실제로
+	// 겪음(FlywayAutoConfiguration 자체가 conditions evaluation report에 아예 안 뜸).
+	// spring-boot-starter-flyway가 그 autoconfigure 모듈을 끌어온다.
+	implementation("org.springframework.boot:spring-boot-starter-flyway")
+	implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 	// 관리자 통계(/api/admin/stats) 집계 쿼리 결과를 Redis에 짧게 캐싱하는 데 사용 (CacheConfig).

@@ -348,4 +348,17 @@ tool use였다. 관리자가 특정 사용자의 활동이 의심스러운지 �
   깎이는 걸 실제로 확인), Spring Boot가 문서화한 `tomcat.version` 프로퍼티 오버라이드로
   11.0.27까지 올려서 해결했다. frontend 쪽 16건은 전부 dev 전용 도구였지만, 이건 처음으로
   "스캐너를 안 붙였으면 몰랐을 운영 서버의 실제 취약점"을 잡은 사례.
-- Flyway 마이그레이션 도입 (`ddl-auto: update` → `validate` 전환)
+- ~~Flyway 마이그레이션 도입~~ (2026-10-26 완료) — `ddl-auto`를 `update`에서 `validate`로
+  바꾸고, 실제 DDL은 Flyway가 `db/migration`의 SQL 파일로 명시적으로 실행하게 했다. 베이스라인
+  (`V1__baseline.sql`)은 손으로 다시 안 쓰고, 운영과 같은 Postgres 16 컨테이너를 깨끗하게
+  띄운 뒤 기존 `ddl-auto: update`로 실제 생성된 스키마를 `pg_dump --schema-only`로 뽑아
+  그대로 썼다 — Hibernate 매핑을 보고 손으로 추측해서 쓰면 제약조건·인덱스가 미묘하게
+  어긋날 위험이 있어서다. `spring.flyway.baseline-on-migrate=true` + `baseline-version: 1`로
+  두 시나리오를 다 처리한다: 이미 이 스키마가 떠 있는 환경(배포된 DB 등)은 V1을 재실행하지
+  않고 "이미 적용됨"으로만 기록하고, 빈 DB(신규 로컬 셋업·테스트용 Testcontainers)는 V1이
+  그대로 실행돼 스키마를 만든다 — 둘 다 직접 띄워서 확인함.
+  Spring Boot 4.x에서 한 번 막혔다: `flyway-core`만 추가했더니 자동설정이 아예 안 붙어서
+  (conditions evaluation report에 FlywayAutoConfiguration 자체가 없었음) 원인을 찾아보니
+  Spring Boot 4부터 autoconfigure가 기능별 모듈로 쪼개졌고, Flyway는 `spring-boot-starter-flyway`
+  라는 별도 스타터로 분리돼 있었다 — `flyway-core`를 직접 추가하는 예전 방식 문서를 그대로
+  따라 하면 막히는 함정이라 기록해둔다.

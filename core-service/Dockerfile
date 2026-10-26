@@ -1,7 +1,7 @@
 # 빌드 컨텍스트는 저장소 루트(frontend/, core-service/ 둘 다 접근 가능해야 함) —
 # `docker build -f core-service/Dockerfile .` 형태로 repo root에서 실행한다.
 
-FROM node:20-alpine AS frontend-build
+FROM node:24-alpine AS frontend-build
 WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci

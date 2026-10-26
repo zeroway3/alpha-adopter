@@ -30,7 +30,7 @@ jobs:
           distribution: "temurin"
 
       - name: Submit core-service Gradle dependency graph
-        uses: gradle/actions/dependency-submission@v4
+        uses: gradle/actions/dependency-submission@v6
         with:
           build-root-directory: core-service
           # 필터 없이 전체 제출하면 앱이 실제로 쓰는 configuration뿐 아니라 Gradle

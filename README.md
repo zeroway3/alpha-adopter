@@ -28,6 +28,7 @@
 - 관리자 화면: ADMIN role(DB, `User.role`)을 가진 계정으로 로그인하면 전체 사용자/구독/키워드 통계, 최근 7일 알림 추이, 최근 알림 목록을 볼 수 있음. `app.admin.emails`는 배포 시점에 해당 이메일 계정을 ADMIN으로 승격하는 부트스트랩 용도로만 쓰이고, 실제 인가는 Spring Security의 `hasRole("ADMIN")` 규칙이 게이트웨이 레벨에서 수행. 권한 변경은 `admin_audit_logs`에 기록되어 `GET /api/admin/audit-logs`로 조회 가능
 - 관리자용 사용자 이상탐지 에이전트: 단발성 tool use가 아니라 모델이 스스로 어떤 도구를 몇 번 호출할지 판단하는 멀티스텝 에이전트 루프(ReAct 패턴)로, 가입 직후 비정상적으로 빠른 다수 구독(NAVER API 할당량 위협)이나 알림을 전혀 안 읽는 비실사용 패턴을 조사해 위험도·근거·권장 조치를 보고함. 읽기 전용 도구만 제공하고 계정 조치는 직접 실행하지 않으며(사람이 최종 판단), 결론 없이 도구만 반복 호출하면 최대 반복 횟수에서 강제 종료해 INCONCLUSIVE로 떨어뜨림. 관리자 대시보드에서 사용자별로 "조사" 버튼 한 번으로 실행하고 결과·권한 변경 감사 로그를 바로 확인 가능. 정상/폭주 구독/비실사용/신규 콜드스타트 4가지 시나리오를 실제 DB에 시드해 에이전트가 맞게 판단하는지 측정하는 평가 하네스(`UserInvestigationEvalReport`)도 6단계 AI 필터의 eval 방식과 동일하게 갖춤
 - 의존성 취약점 스캔: PR이 새로 추가하는 의존성을 GitHub Advisory Database와 대조해 high 이상 심각도면 PR 체크를 실패시키는 `dependency-review` 워크플로와, 이미 들어와 있는 의존성에서 나중에 발견된 CVE를 매주 찾아 업데이트 PR을 올리는 Dependabot(Gradle/npm/GitHub Actions 전부 대상)을 함께 운영 — "새로 들어오는 것"과 "이미 있다가 나중에 터지는 것"을 서로 다른 메커니즘으로 커버. core-service(Gradle)는 의존성 버전 상당수가 Spring Boot BOM으로 관리돼 build.gradle.kts 정적 분석만으로는 실제 버전을 알 수 없어, Gradle을 실행해 해석된 그래프를 제출하는 `dependency-submission` 액션을 PR/main 양쪽에 붙여 보완 — 붙이자마자 내장 Tomcat의 critical CVE 3건(인가 우회·인증 재전송 우회)을 실제로 찾아내 패치함
+- 스키마 관리를 Flyway로 전환: Hibernate의 `ddl-auto`는 `validate`로만 쓰고, 실제 DDL은 `db/migration`의 SQL 파일이 명시적으로 담당. 베이스라인(`V1__baseline.sql`)은 운영과 동일한 Postgres 16에서 실제 생성된 스키마를 `pg_dump`로 뽑아 그대로 사용해 제약조건·인덱스 누락 위험을 없앰. `baseline-on-migrate`로 이미 이 스키마가 떠 있는 환경(기존 배포)과 빈 DB(신규 셋업·테스트)를 모두 안전하게 처리
 
 투자 조언·매매 시그널 등 자본시장법상 유사투자자문업으로 해석될 수 있는 기능은 스코프에서 명시적으로 제외합니다. 뉴스 원문 전체를 저장·재배포하지 않고 제목·요약·링크 위주로 다뤄 저작권 이슈를 피합니다. `ANTHROPIC_API_KEY`/`VOYAGE_API_KEY`가 없는 환경(예: 기여자 로컬)에서는 AI 필터/중복 제거가 각각 자동으로 비활성화되고 기존 문자열 매칭 결과를 그대로 신뢰합니다(fail-open).
 
@@ -113,7 +114,9 @@ alpha-adopter/
         │   ├── user/            # 관리자 승격 부트스트랩(AdminBootstrapRunner, 배포 환경변수 기반 idempotent grant)
         │   ├── admin/           # 관리자 전용 통계/데이터 API (사용자·키워드·일별 추이·최근 알림, DB role 기반 접근 제어)
         │   └── config/          # Kafka 토픽 등 설정
-        └── resources/static/    # 빌드 산출물 전용 디렉터리 (git에는 커밋되지 않음, frontend/의 `npm run build`가 채움)
+        └── resources/
+            ├── db/migration/    # Flyway 마이그레이션(DDL은 전부 여기서만 관리, Hibernate는 validate만 함)
+            └── static/          # 빌드 산출물 전용 디렉터리 (git에는 커밋되지 않음, frontend/의 `npm run build`가 채움)
 ```
 
 ## 로컬 개발 환경

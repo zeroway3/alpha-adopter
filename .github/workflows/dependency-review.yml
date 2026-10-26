@@ -17,7 +17,7 @@ jobs:
   dependency-review:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # core-service(Gradle)의 의존성 버전 상당수가 Spring Boot BOM으로 관리돼 build.gradle.kts
       # 파일만 정적으로 읽어서는 실제 버전을 알 수 없다 — 그래서 GitHub Dependency Graph가
@@ -40,7 +40,7 @@ jobs:
           dependency-graph-include-configurations: "^(compileClasspath|runtimeClasspath|testCompileClasspath|testRuntimeClasspath)$"
 
       - name: Dependency Review
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
           comment-summary-in-pr: always

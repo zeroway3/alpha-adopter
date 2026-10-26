@@ -19,7 +19,28 @@ repositories {
 	mavenCentral()
 }
 
+// Spring Boot 4.1.1이 io.spring.dependency-management로 관리하는 Tomcat 버전(11.0.24)에
+// critical CVE 3건(인증 우회·인가 우회, GHSA-gcx9-497g-6cp6/9xv2-5v5q-p794/h3x4-894j-xpx5)이
+// 있고 11.0.25부터 패치됨. 일반 Gradle `constraints {}`는 이 플러그인의 BOM에 덮어써져 효과가
+// 없었다(실제로 겪음, 11.0.27 -> 11.0.24로 도로 깎임) — Spring Boot BOM이 문서화한 대로
+// `tomcat.version` 프로퍼티를 직접 지정해야 Boot의 다음 패치 릴리스를 기다리지 않고 올라간다.
+ext["tomcat.version"] = "11.0.27"
+
+// jackson-core 3.1.5(Spring Boot 4.1.1이 관리하는 jackson-bom.version)에 high CVE 2건 —
+// ReDoS(GHSA-p6pp-m3f8-5c89), 에러 토큰 길이 미제한으로 인한 DoS(GHSA-7hhh-6rmp-j9qf).
+// Tomcat과 같은 이유로 일반 constraints는 안 먹혀서(BOM에 덮어써짐) jackson-bom.version
+// 프로퍼티를 직접 지정한다. 3.1.7부터 패치돼 같은 마이너 라인의 최신 패치로 올림.
+ext["jackson-bom.version"] = "3.1.8"
+
 dependencies {
+	// kafka-clients 4.2.1이 끌어오는 at.yawk.lz4:lz4-java 1.10.1에 high CVE(공유 임시
+	// 디렉터리에 추출한 네이티브 라이브러리를 다른 로컬 사용자가 교체 가능, GHSA-mcr4-qmvw-px4g)가
+	// 있고 1.11.4부터 패치됨. 이건 Spring Boot BOM이 아니라 Kafka 클라이언트의 전이 의존성이라
+	// 일반 constraints로 오버라이드가 먹힌다(Tomcat 케이스와 달리 BOM에 안 덮어써짐).
+	constraints {
+		implementation("at.yawk.lz4:lz4-java:1.12.1")
+	}
+
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")

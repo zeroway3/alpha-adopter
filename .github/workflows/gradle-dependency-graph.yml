@@ -1,0 +1,35 @@
+name: Gradle dependency graph
+
+# Dependabot이 core-service(Gradle)의 CVE를 상시로 찾아내려면, 기본 브랜치(main)의
+# 해석된 의존성 그래프가 GitHub에 최신 상태로 제출돼 있어야 한다. dependency-review.yml의
+# 제출은 PR 시점에만 일어나므로, main에 머지될 때마다 한 번 더 제출해 기본 브랜치
+# 그래프가 뒤처지지 않게 한다.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "core-service/**"
+      - ".github/workflows/gradle-dependency-graph.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  submit-graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Submit core-service Gradle dependency graph
+        uses: gradle/actions/dependency-submission@v4
+        with:
+          build-root-directory: core-service
+          # dependency-review.yml과 동일한 이유로 앱이 실제로 쓰는 configuration만 제출한다
+          # (buildscript/플러그인 classpath의 빌드 전용 의존성을 Dependabot 대상에서 제외).
+          dependency-graph-include-configurations: "^(compileClasspath|runtimeClasspath|testCompileClasspath|testRuntimeClasspath)$"

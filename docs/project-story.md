@@ -326,4 +326,26 @@ tool use였다. 관리자가 특정 사용자의 활동이 의심스러운지 �
 - ~~Rate limiting (회원가입/로그인/구독 API)~~ (2026-09-14 완료)
 - ~~Refresh Token 도입, JWT `localStorage` → httpOnly 쿠키 전환~~ (2026-09-15 완료)
 - ~~Role 기반 인가(RBAC)로 전환~~ (2026-09-25 완료)
+- ~~의존성 취약점 스캔 CI~~ (2026-10-22 완료) — `dependency-review-action`으로 PR이 새로
+  추가하는 의존성을 GitHub Advisory Database와 대조해 high 이상이면 체크 실패, Dependabot으로
+  이미 들어와 있던 의존성의 CVE도 매주 찾아 업데이트 PR 생성(Gradle/npm/GitHub Actions 전부).
+  "새로 들어오는 것"과 "이미 있다가 나중에 터지는 것"을 커버 범위가 겹치지 않는 두 메커니즘으로
+  나눈 이유: dependency-review는 PR diff만 보기 때문에 아무 변경 없이 가만히 있던 의존성에서
+  나중에 CVE가 공개되는 경우를 못 잡음 — 그건 주기적으로 도는 Dependabot 쪽 역할.
+  설정하자마자 GitHub이 main에서 기존 취약점 16건(critical 3건 포함)을 바로 찾아냈는데, 전부
+  frontend devDependencies(vite/vitest 계열 — 운영 번들에 안 들어가고 로컬 dev 서버·테스트
+  러너에만 쓰임)였다. `npm audit fix --force`로 vite 5→6, vitest 2→4 메이저 업그레이드하고
+  타입체크·테스트·프로덕션 빌드까지 전부 통과 확인한 뒤 0건으로 정리. 다만 스캐너를 붙이고
+  보니 GitHub Dependency Graph가 core-service(Gradle)는 아예 인식을 못 하고 있었다 —
+  의존성 버전 상당수가 Spring Boot BOM으로 관리돼서 build.gradle.kts를 정적으로 읽기만
+  해서는 실제 버전을 알 수 없기 때문. `gradle/actions/dependency-submission`으로 실제
+  Gradle을 돌려 해석한 그래프를 PR 시점과 main 푸시 시점 둘 다에 제출하도록 고쳐서,
+  frontend만이 아니라 core-service도 스캔 대상에 들어오게 했더니, 첫 실행에서 바로 운영
+  서버가 실제로 쓰는 내장 Tomcat(`tomcat-embed-core`)의 critical CVE 3건(인가 우회 2건 +
+  DIGEST 인증 재전송 우회 1건, 11.0.24 → 11.0.25에서 패치)을 찾아냈다. Spring Boot의
+  `io.spring.dependency-management` 플러그인이 관리하는 버전이라 일반 Gradle
+  `constraints {}`로는 BOM에 덮어써져 효과가 없었고(11.0.27로 지정해도 도로 11.0.24로
+  깎이는 걸 실제로 확인), Spring Boot가 문서화한 `tomcat.version` 프로퍼티 오버라이드로
+  11.0.27까지 올려서 해결했다. frontend 쪽 16건은 전부 dev 전용 도구였지만, 이건 처음으로
+  "스캐너를 안 붙였으면 몰랐을 운영 서버의 실제 취약점"을 잡은 사례.
 - Flyway 마이그레이션 도입 (`ddl-auto: update` → `validate` 전환)

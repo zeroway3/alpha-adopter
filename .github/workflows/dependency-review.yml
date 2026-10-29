@@ -24,7 +24,7 @@ jobs:
       # core-service를 전혀 인식하지 못했다(확인 완료). 실제로 Gradle을 돌려 해석된 의존성
       # 그래프를 제출해야 dependency-review-action과 Dependabot이 core-service도 볼 수 있다.
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: "21"
           distribution: "temurin"

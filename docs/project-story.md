@@ -362,3 +362,21 @@ tool use였다. 관리자가 특정 사용자의 활동이 의심스러운지 �
   Spring Boot 4부터 autoconfigure가 기능별 모듈로 쪼개졌고, Flyway는 `spring-boot-starter-flyway`
   라는 별도 스타터로 분리돼 있었다 — `flyway-core`를 직접 추가하는 예전 방식 문서를 그대로
   따라 하면 막히는 함정이라 기록해둔다.
+- ~~코드 자체 취약점 스캔(CodeQL)~~ (2026-11-08 완료) — 지금까지 붙인 스캐너(dependency-review,
+  Dependabot)는 전부 "가져다 쓰는 의존성"의 CVE만 본다. 우리가 직접 짠 코드 안의 인젝션,
+  인증 우회, 안전하지 않은 역직렬화 같은 결함은 그 축으로는 아예 안 보인다는 공백이 있어서
+  GitHub CodeQL(퍼블릭 레포 무료)을 붙였다. core-service(Kotlin→JVM, `java-kotlin` 언어,
+  manual build mode로 `./gradlew compileKotlin compileTestKotlin` 실행 후 분석)와
+  frontend(TypeScript, `javascript-typescript`, 빌드 불필요)를 각각 별도 매트릭스 job으로
+  스캔. PR·main 푸시 외에 매주 1회 스캔도 추가했다 — dependency-review/Dependabot을
+  나눈 것과 같은 이유로, 코드가 안 바뀌어도 CodeQL 쿼리 팩 자체가 업데이트되면 전에 못
+  잡던 패턴을 새로 잡아낼 수 있어서다.
+  붙이는 과정에서 CI 전용 문제가 두 겹으로 걸렸다. 1) "Compile core-service" 단계가
+  40분 넘게 멈춤 — `--no-daemon`으로 Gradle 데몬은 껐지만 Kotlin 컴파일러 자체의
+  별도 상주 데몬(기본 전략)이 CodeQL의 ptrace 기반 프로세스 추적과 충돌한 것으로 보여,
+  `kotlin.compiler.execution.strategy=in-process`로 강제해 컴파일러가 별도 프로세스 없이
+  Gradle 프로세스 안에서 직접 돌게 해 해결. 2) 그 직후 컴파일이 2분대로 끝나긴 했지만
+  이번엔 빠르게 실패 — in-process 전략이 컴파일러를 Gradle 데몬 JVM 안에서 돌리다 보니
+  기본 힙(512MiB)·메타스페이스(384MiB)로는 부족해 GC 쓰래싱으로 데몬이 강제 종료됐다.
+  `core-service/gradle.properties`에 `org.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=1g`를
+  명시해 해결 — 로컬 clean build로 먼저 재현·검증 후 CI에 반영.

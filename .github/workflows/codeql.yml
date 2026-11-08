@@ -1,0 +1,67 @@
+name: CodeQL
+
+# dependency-review/Dependabot(의존성 CVE)과는 다른 축 — 이건 우리가 직접 짠 코드
+# 자체의 취약점(인젝션, 인증 우회, 안전하지 않은 역직렬화 등)을 정적분석으로 찾는다.
+# core-service(Kotlin→JVM)와 frontend(TypeScript) 둘 다 스캔한다.
+on:
+  pull_request:
+    paths:
+      - "core-service/**"
+      - "frontend/**"
+      - ".github/workflows/codeql.yml"
+  push:
+    branches: [main]
+    paths:
+      - "core-service/**"
+      - "frontend/**"
+  schedule:
+    # 코드 변경이 없어도 CodeQL 쿼리 팩 자체가 업데이트되면 전에 못 잡던 패턴을
+    # 새로 잡아낼 수 있다 — dependency-review와 Dependabot을 나눈 것과 같은 이유로
+    # 주기적 스캔을 따로 둔다.
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: java-kotlin
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Set up JDK 21
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Compile core-service (manual build mode)
+        if: matrix.language == 'java-kotlin'
+        working-directory: core-service
+        # --no-daemon만으로는 부족했다(실제로 겪음 — Kotlin 컴파일러 자체 데몬이
+        # 별도 상주 프로세스라 CodeQL의 프로세스 추적과 충돌해 40분 넘게 멈췄다).
+        # in-process로 강제해 컴파일러를 Gradle 프로세스 안에서 직접 돌려야
+        # 별도 프로세스 생성이 없어져 추적이 막히지 않는다.
+        run: ./gradlew compileKotlin compileTestKotlin --no-daemon -Pkotlin.compiler.execution.strategy=in-process
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

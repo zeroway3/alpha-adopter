@@ -1,0 +1,63 @@
+name: CodeQL
+
+# dependency-review/Dependabot(의존성 CVE)과는 다른 축 — 이건 우리가 직접 짠 코드
+# 자체의 취약점(인젝션, 인증 우회, 안전하지 않은 역직렬화 등)을 정적분석으로 찾는다.
+# core-service(Kotlin→JVM)와 frontend(TypeScript) 둘 다 스캔한다.
+on:
+  pull_request:
+    paths:
+      - "core-service/**"
+      - "frontend/**"
+      - ".github/workflows/codeql.yml"
+  push:
+    branches: [main]
+    paths:
+      - "core-service/**"
+      - "frontend/**"
+  schedule:
+    # 코드 변경이 없어도 CodeQL 쿼리 팩 자체가 업데이트되면 전에 못 잡던 패턴을
+    # 새로 잡아낼 수 있다 — dependency-review와 Dependabot을 나눈 것과 같은 이유로
+    # 주기적 스캔을 따로 둔다.
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: java-kotlin
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Set up JDK 21
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Compile core-service (manual build mode)
+        if: matrix.language == 'java-kotlin'
+        working-directory: core-service
+        run: ./gradlew compileKotlin compileTestKotlin --no-daemon
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

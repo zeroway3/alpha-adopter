@@ -41,6 +41,14 @@ dependencies {
 		implementation("at.yawk.lz4:lz4-java:1.12.1")
 	}
 
+	// kafka-clients 4.2.2가 끌어오는 org.xerial.snappy:snappy-java 1.1.10.7에 high CVE 2건 +
+	// medium 1건(uncompress 계열 힙 버퍼 오버플로, 압축 해제 길이 미검증으로 인한 무제한 메모리
+	// 할당, arrayCopy/rawWrite 범위 미검증으로 인한 JVM 크래시)이 있고 1.1.10.9부터 패치됨.
+	// lz4-java와 같은 이유로 일반 constraints가 먹힌다.
+	constraints {
+		implementation("org.xerial.snappy:snappy-java:1.1.10.12")
+	}
+
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	// ddl-auto: update → validate 전환의 일부. Hibernate는 스키마를 검증만 하고, 실제 DDL은
 	// Flyway가 db/migration의 SQL 파일로 명시적으로 실행한다. Spring Boot 4.x부터

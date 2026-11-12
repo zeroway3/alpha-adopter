@@ -38,7 +38,7 @@ dependencies {
 	// 있고 1.11.4부터 패치됨. 이건 Spring Boot BOM이 아니라 Kafka 클라이언트의 전이 의존성이라
 	// 일반 constraints로 오버라이드가 먹힌다(Tomcat 케이스와 달리 BOM에 안 덮어써짐).
 	constraints {
-		implementation("at.yawk.lz4:lz4-java:1.12.1")
+		implementation("at.yawk.lz4:lz4-java:1.14.0")
 	}
 
 	// kafka-clients 4.2.2가 끌어오는 org.xerial.snappy:snappy-java 1.1.10.7에 high CVE 2건 +

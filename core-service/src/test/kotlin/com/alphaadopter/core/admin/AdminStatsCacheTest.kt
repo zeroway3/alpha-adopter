@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.cache.Cache
 import org.springframework.cache.CacheManager
 import org.springframework.http.HttpStatus
-import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -53,21 +52,29 @@ class AdminStatsCacheTest : IntegrationTestBase() {
     }
 
     @Test
-    @Transactional
     fun `snapshot은 캐시되어 DB가 바뀌어도 같은 값을 돌려주고 캐시를 비우면 재계산한다`() {
+        // @Transactional을 쓰지 않는다 — Spring Boot가 자동구성하는 RedisCacheManager는
+        // transaction-aware라, 활성 트랜잭션 안에서 부른 evict류 호출은 커밋 시점까지 미뤄진다.
+        // 테스트용 @Transactional은 기본적으로 롤백하므로 커밋이 영영 안 와서 evict가 실제로는
+        // 아무 일도 안 하는 것처럼 동작한다(실제로 CI에서 간헐적으로 겪음 — evict 직후 get()이
+        // 여전히 이전 값을 돌려줌). 그래서 probe 유저는 트랜잭션 롤백 대신 직접 지운다.
         val before = adminStatsService.snapshot()
 
-        userRepository.saveAndFlush(User(email = "cache-probe-${System.nanoTime()}@example.com"))
-        val directCount = userRepository.count()
+        val probe = userRepository.saveAndFlush(User(email = "cache-probe-${System.nanoTime()}@example.com"))
+        try {
+            val directCount = userRepository.count()
 
-        val cached = adminStatsService.snapshot()
-        assertEquals(before.totalUsers, cached.totalUsers, "캐시 히트라 새 유저가 반영되면 안 된다")
+            val cached = adminStatsService.snapshot()
+            assertEquals(before.totalUsers, cached.totalUsers, "캐시 히트라 새 유저가 반영되면 안 된다")
 
-        statsCache().evictIfPresent(KEY)
-        assertNull(statsCache().get(KEY), "evict 후 캐시에 값이 없어야 한다")
-        val fresh = adminStatsService.snapshot()
-        assertEquals(before.totalUsers + 1, directCount, "테스트 트랜잭션에서 방금 저장한 유저가 보여야 한다")
-        assertEquals(directCount, fresh.totalUsers, "캐시를 비우면 현재 DB 유저 수(=$directCount)가 반영돼야 한다")
+            statsCache().evictIfPresent(KEY)
+            assertNull(statsCache().get(KEY), "evict 후 캐시에 값이 없어야 한다")
+            val fresh = adminStatsService.snapshot()
+            assertEquals(before.totalUsers + 1, directCount, "방금 저장한 유저가 보여야 한다")
+            assertEquals(directCount, fresh.totalUsers, "캐시를 비우면 현재 DB 유저 수(=$directCount)가 반영돼야 한다")
+        } finally {
+            userRepository.delete(probe)
+        }
     }
 
     @Test

@@ -9,6 +9,14 @@ on:
       - "frontend/**"
       - ".github/workflows/test-frontend.yml"
 
+  # main 반영 후에도 실행해 README 배지가 main의 실제 테스트 상태를 보여주게 한다
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/test-frontend.yml"
+  workflow_dispatch: {}
+
 jobs:
   test:
     runs-on: ubuntu-latest

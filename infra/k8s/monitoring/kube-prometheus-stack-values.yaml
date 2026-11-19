@@ -34,16 +34,27 @@ prometheus:
 grafana:
   # RWO(gp3) 볼륨을 쓰는 단일 레플리카라, 기본 RollingUpdate로 새 파드를 먼저 띄우려 하면
   # 볼륨 Multi-Attach 에러로 멈춘다. 이전 파드를 먼저 내리는 Recreate 전략으로 고정.
-  strategy:
+  # (grafana 차트의 키는 strategy가 아니라 deploymentStrategy다 — strategy로 적었을 땐 조용히
+  # 무시되고 RollingUpdate가 그대로 적용돼, 업그레이드 때마다 새 파드가 볼륨을 못 잡고 멈췄다.)
+  deploymentStrategy:
     type: Recreate
   service:
     type: ClusterIP
+  # Grafana 13부터 기동 시 내장 API 서버·앱을 초기화하느라 첫 기동이 수 분 걸린다. 예전 값
+  # (cpu 50m, 메모리 256Mi)으로는 기동이 끝나기 전에 liveness probe가 실패해 재시작을 반복했다.
   resources:
     requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
+      cpu: 100m
       memory: 256Mi
+    limits:
+      memory: 512Mi
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 180
+    timeoutSeconds: 30
+    failureThreshold: 10
   persistence:
     enabled: true
     storageClassName: gp3

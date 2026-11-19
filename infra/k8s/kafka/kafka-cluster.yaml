@@ -1,5 +1,5 @@
 # 로컬 docker-compose의 bitnami/kafka(KRaft 단일 브로커)를 EKS 위 Strimzi로 재현
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaNodePool
 metadata:
   name: dual-role
@@ -19,7 +19,7 @@ spec:
         size: 10Gi
         deleteClaim: true
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: alphaadopter-kafka
@@ -29,8 +29,10 @@ metadata:
     strimzi.io/kraft: enabled
 spec:
   kafka:
-    version: 3.9.0
-    metadataVersion: 3.9-IV0
+    # strimzi.io/install/latest(최신 오퍼레이터)가 3.x를 더 이상 지원하지 않아
+    # (Unsupported Kafka.spec.kafka.version 에러로 실제로 확인) 지원 버전 중 최신으로 고정
+    version: 4.3.2
+    metadataVersion: 4.3-IV0
     listeners:
       - name: plain
         port: 9092

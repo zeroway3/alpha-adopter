@@ -116,3 +116,26 @@ export interface AdminAuditLogSummary {
   reason: string;
   createdAt: string;
 }
+
+// 수집 이상 유형. GAP=페이지 상한까지 넘겨도 마지막 수집 지점에 못 닿음(누락 의심),
+// FETCH_FAILED=재시도까지 실패, PUBLISH_FAILED=Kafka 발행 실패(다음 주기에 같은 구간 재수집)
+export type CollectorIncidentType = "GAP" | "FETCH_FAILED" | "PUBLISH_FAILED";
+
+export interface CollectorCheckpointSummary {
+  keyword: string;
+  lastPublishedAt: string;
+  updatedAt: string;
+}
+
+export interface CollectorIncidentSummary {
+  id: number;
+  keyword: string;
+  type: CollectorIncidentType;
+  detail: string;
+  occurredAt: string;
+}
+
+export interface CollectorStatusResponse {
+  checkpoints: CollectorCheckpointSummary[];
+  recentIncidents: CollectorIncidentSummary[];
+}

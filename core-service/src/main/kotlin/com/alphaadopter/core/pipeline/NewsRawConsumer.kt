@@ -19,7 +19,7 @@ import java.time.format.DateTimeFormatter
 // 있었다. 구독 목록도 매 메시지마다 전체 테이블을 읽는 대신 SubscriptionCache를 사용한다.
 @Component
 class NewsRawConsumer(
-    private val rawNewsMongoRepository: RawNewsMongoRepository,
+    private val rawNewsStore: RawNewsStore,
     private val newsArticleRepository: NewsArticleRepository,
     private val subscriptionCache: SubscriptionCache,
     private val relevanceScorer: RelevanceScorer,
@@ -30,7 +30,8 @@ class NewsRawConsumer(
 
     @KafkaListener(topics = ["\${app.kafka.topic.news-raw}"], groupId = "core-service-raw-consumer")
     fun consume(message: NewsRawMessage) {
-        rawNewsMongoRepository.save(
+        // 같은 기사가 다시 수집되거나 Kafka가 재전달해도 원본은 한 건만 남는다(RawNewsStore 참고)
+        rawNewsStore.saveIfAbsent(
             RawNewsDocument(
                 keyword = message.keyword,
                 title = message.title,

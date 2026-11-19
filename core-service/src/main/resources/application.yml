@@ -133,6 +133,16 @@ app:
       news-matched: news.matched
   collector:
     fixed-delay-ms: ${COLLECTOR_INTERVAL_MS:60000}
+    # 키워드당 한 번에 받는 기사 수(API 상한 100). 평소에는 이 한 번으로 마지막 수집 지점에 닿는다
+    page-size: ${COLLECTOR_PAGE_SIZE:100}
+    # 기사가 몰려 한 페이지 안에 수집 지점이 없을 때 최대 몇 페이지까지 더 거슬러 올라갈지.
+    # 이 안에서도 못 닿으면 누락 의심(GAP)으로 기록한다 — 할당량을 무한정 쓰지 않기 위한 상한
+    max-pages: ${COLLECTOR_MAX_PAGES:3}
+    # 429·5xx·네트워크 오류에 대한 지수 백오프 재시도(인증 오류 등은 재시도하지 않음)
+    max-retries: ${COLLECTOR_MAX_RETRIES:3}
+    retry-initial-delay-ms: ${COLLECTOR_RETRY_INITIAL_DELAY_MS:500}
+    # news.raw 발행 확인을 기다리는 시간. 넘기면 발행 실패로 보고 수집 지점을 전진시키지 않는다
+    publish-timeout-ms: ${COLLECTOR_PUBLISH_TIMEOUT_MS:10000}
   subscription:
     # NAVER API HUB 월 할당량(775,000회) 보호용. 고유 키워드 하나당 collector.fixed-delay-ms 간격으로
     # 계속 호출되므로, 기본 60초 간격 기준 775000 / (1440회/일 * 30일) ≈ 17.9개가 이론상 한계 — 여유를 두고 15로 제한

@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.mail.SimpleMailMessage
 import org.springframework.mail.javamail.JavaMailSender
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -22,7 +21,8 @@ class DailyDigestScheduler(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Scheduled(cron = "\${app.notification.digest-cron}")
+    // 스케줄 트리거는 DailyDigestJob이 분산 락을 잡은 뒤 호출한다. 같은 클래스 안에서 호출하면
+    // @Transactional 프록시를 거치지 않으므로 트리거를 별도 빈으로 분리했다.
     @Transactional
     fun sendDigest() {
         val pending = notificationRepository.findAllByStatusAndSubscriptionUserIsMember(NotificationStatus.MATCHED, false)

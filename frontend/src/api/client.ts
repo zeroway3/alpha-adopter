@@ -1,5 +1,6 @@
 import type {
   AdminAuditLogSummary,
+  CollectorStatusResponse,
   AdminDailyCount,
   AdminKeywordSummary,
   AdminStatsResponse,
@@ -152,6 +153,11 @@ export async function investigateUser(userId: number): Promise<InvestigationResp
 
 export async function loadAdminAuditLogs(): Promise<AdminAuditLogSummary[]> {
   const res = await authFetch("/api/admin/audit-logs");
+  return res.json();
+}
+
+export async function loadCollectorStatus(): Promise<CollectorStatusResponse> {
+  const res = await authFetch("/api/admin/collector/status");
   return res.json();
 }
 

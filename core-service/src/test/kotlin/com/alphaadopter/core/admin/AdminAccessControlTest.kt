@@ -18,6 +18,9 @@ class AdminAccessControlTest : IntegrationTestBase() {
     @Autowired
     lateinit var adminStatsController: AdminStatsController
 
+    @Autowired
+    lateinit var adminCollectorController: AdminCollectorController
+
     @Test
     fun `일반 회원(USER role)은 관리자 통계에 접근할 수 없다`() {
         val nonAdmin = AuthPrincipal(userId = 1L, email = "not-admin@example.com", role = UserRole.USER)
@@ -28,6 +31,7 @@ class AdminAccessControlTest : IntegrationTestBase() {
         assertFailsWith<ResponseStatusException> { adminStatsController.users(nonAdmin) }
         assertFailsWith<ResponseStatusException> { adminStatsController.keywords(nonAdmin) }
         assertFailsWith<ResponseStatusException> { adminStatsController.dailyStats(nonAdmin) }
+        assertFailsWith<ResponseStatusException> { adminCollectorController.status(nonAdmin, 50) }
     }
 
     @Test
@@ -36,5 +40,6 @@ class AdminAccessControlTest : IntegrationTestBase() {
 
         val stats = adminStatsController.stats(admin)
         assertEquals(true, stats.totalUsers >= 0)
+        adminCollectorController.status(admin, 50)
     }
 }

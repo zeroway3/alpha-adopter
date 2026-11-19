@@ -3,6 +3,8 @@ import * as api from "../api/client";
 import { SessionExpiredError } from "../api/client";
 import type {
   AdminAuditLogSummary,
+  CollectorIncidentType,
+  CollectorStatusResponse,
   AdminDailyCount,
   AdminKeywordSummary,
   AdminStatsResponse,
@@ -16,6 +18,16 @@ import { Icon, type IconName } from "../icons/Icon";
 function formatTime(iso: string | null): string {
   if (!iso) return "-";
   return new Date(iso).toLocaleString("ko-KR");
+}
+
+function IncidentBadge({ type }: { type: CollectorIncidentType }) {
+  const map: Record<CollectorIncidentType, [string, string]> = {
+    GAP: ["badge-warning", "누락 의심"],
+    FETCH_FAILED: ["badge-danger", "호출 실패"],
+    PUBLISH_FAILED: ["badge-danger", "발행 실패"],
+  };
+  const [variant, label] = map[type];
+  return <span className={`badge ${variant}`}>{label}</span>;
 }
 
 function StatusBadge({ status }: { status: NotificationStatus }) {
@@ -96,6 +108,7 @@ export function AdminDashboard({ onSessionExpired }: Props) {
   const [keywords, setKeywords] = useState<AdminKeywordSummary[]>([]);
   const [daily, setDaily] = useState<AdminDailyCount[]>([]);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLogSummary[]>([]);
+  const [collector, setCollector] = useState<CollectorStatusResponse | null>(null);
   const [serverUp, setServerUp] = useState<boolean | null>(null);
   const [now, setNow] = useState(() => new Date());
 
@@ -126,18 +139,20 @@ export function AdminDashboard({ onSessionExpired }: Props) {
 
   const refresh = useCallback(async () => {
     try {
-      const [s, u, k, d, a] = await Promise.all([
+      const [s, u, k, d, a, c] = await Promise.all([
         api.loadAdminStats(),
         api.loadAdminUsers(),
         api.loadAdminKeywords(),
         api.loadAdminDaily(),
         api.loadAdminAuditLogs(),
+        api.loadCollectorStatus(),
       ]);
       setStats(s);
       setUsers(u);
       setKeywords(k);
       setDaily(d);
       setAuditLogs(a);
+      setCollector(c);
     } catch (err) {
       if (err instanceof SessionExpiredError) onSessionExpired();
       else console.error(err);
@@ -338,6 +353,82 @@ export function AdminDashboard({ onSessionExpired }: Props) {
                         {investigatingUserId === u.id ? "조사 중..." : "조사"}
                       </button>
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="card-header">
+          <span className="card-icon tint-amber">
+            <Icon name="newspaper" />
+          </span>
+          <div>
+            <div className="card-title">뉴스 수집 현황</div>
+            <div className="card-subtitle">
+              키워드별 마지막 수집 기사 시각과, 누락 의심·호출 실패·발행 실패 같은 최근 수집 이상 기록
+            </div>
+          </div>
+        </div>
+        <div className="table-card">
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>키워드</th>
+                  <th>마지막 수집 기사 시각</th>
+                  <th>수집 지점 갱신</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(collector?.checkpoints.length ?? 0) === 0 && (
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: "center", color: "var(--text-faint)", padding: "2rem 1rem" }}>
+                      아직 수집 기록이 없습니다.
+                    </td>
+                  </tr>
+                )}
+                {collector?.checkpoints.map((cp) => (
+                  <tr key={cp.keyword}>
+                    <td>{cp.keyword}</td>
+                    <td>{formatTime(cp.lastPublishedAt)}</td>
+                    <td>{formatTime(cp.updatedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="table-card">
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>유형</th>
+                  <th>키워드</th>
+                  <th>내용</th>
+                  <th>시각</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(collector?.recentIncidents.length ?? 0) === 0 && (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: "center", color: "var(--text-faint)", padding: "2rem 1rem" }}>
+                      최근 수집 이상이 없습니다.
+                    </td>
+                  </tr>
+                )}
+                {collector?.recentIncidents.map((incident) => (
+                  <tr key={incident.id}>
+                    <td>
+                      <IncidentBadge type={incident.type} />
+                    </td>
+                    <td>{incident.keyword}</td>
+                    <td>{incident.detail}</td>
+                    <td>{formatTime(incident.occurredAt)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -43,10 +43,14 @@ class AdminStatsCacheTest : IntegrationTestBase() {
     private fun statsCache(): Cache = cacheManager.getCache(CacheConfig.ADMIN_STATS_CACHE)!!
 
     @BeforeEach
-    fun evictBefore() = statsCache().evict(KEY)
+    fun evictBefore() {
+        statsCache().evictIfPresent(KEY)
+    }
 
     @AfterEach
-    fun evictAfter() = statsCache().evict(KEY)
+    fun evictAfter() {
+        statsCache().evictIfPresent(KEY)
+    }
 
     @Test
     @Transactional
@@ -59,7 +63,7 @@ class AdminStatsCacheTest : IntegrationTestBase() {
         val cached = adminStatsService.snapshot()
         assertEquals(before.totalUsers, cached.totalUsers, "캐시 히트라 새 유저가 반영되면 안 된다")
 
-        statsCache().evict(KEY)
+        statsCache().evictIfPresent(KEY)
         assertNull(statsCache().get(KEY), "evict 후 캐시에 값이 없어야 한다")
         val fresh = adminStatsService.snapshot()
         assertEquals(before.totalUsers + 1, directCount, "테스트 트랜잭션에서 방금 저장한 유저가 보여야 한다")

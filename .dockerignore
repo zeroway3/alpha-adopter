@@ -1,0 +1,14 @@
+# 빌드 컨텍스트가 저장소 루트라(core-service/Dockerfile이 frontend/와 core-service/를 함께 COPY),
+# Docker는 core-service/.dockerignore가 아니라 이 파일을 읽는다. 로컬 node_modules가 이미지 안으로
+# 복사되면 컨테이너(linux-musl)에서 npm ci로 받은 네이티브 바이너리를 호스트(Windows/macOS)용으로
+# 덮어써 빌드가 깨진다(rollup 네이티브 모듈 누락). CI는 깨끗한 체크아웃이라 드러나지 않던 문제.
+.git
+**/node_modules
+frontend/dist
+core-service/build
+core-service/.gradle
+core-service/src/main/resources/static
+infra/terraform/.terraform
+infra/terraform/*.tfstate*
+infra/terraform/tfplan
+**/*.env

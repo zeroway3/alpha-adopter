@@ -96,7 +96,8 @@ class NewsCollector(
         }
 
         // 오래된 기사부터 발행해, 하류에서도 실제 발생 순서에 가깝게 처리되도록 한다
-        val messages = fresh.asReversed().map { toMessage(keyword, it) }
+        val collectedAt = Instant.now()
+        val messages = fresh.asReversed().map { toMessage(keyword, it, collectedAt) }
         val futures = messages.map { kafkaTemplate.send(newsRawTopic, it.link, it) }
         val failedPublishes = futures.count { future ->
             runCatching { future.get(publishTimeoutMs, TimeUnit.MILLISECONDS) }.isFailure
@@ -143,13 +144,14 @@ class NewsCollector(
     }
 
     // 응답 title/description에는 하이라이트용 <b> 태그와 HTML 엔티티(&quot; 등)가 섞여 있다
-    private fun toMessage(keyword: String, item: NaverNewsItem) = NewsRawMessage(
+    private fun toMessage(keyword: String, item: NaverNewsItem, collectedAt: Instant) = NewsRawMessage(
         keyword = keyword,
         title = HtmlUtils.htmlUnescape(stripHighlightTags(item.title)),
         description = HtmlUtils.htmlUnescape(stripHighlightTags(item.description)),
         link = item.link,
         originalLink = item.originallink,
         pubDate = item.pubDate,
+        collectedAt = collectedAt,
     )
 
     companion object {

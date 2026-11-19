@@ -83,6 +83,8 @@ class NewsMatchPersister(
                     title = article.title,
                     link = article.link,
                     personalizationScore = personalizationScore,
+                    publishedAt = article.publishedAt,
+                    collectedAt = message.collectedAt ?: article.collectedAt,
                 ),
             )
         }

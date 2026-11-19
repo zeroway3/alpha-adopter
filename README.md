@@ -1,179 +1,160 @@
 # AlphaAdopter
 
-> 관심 종목·키워드에 대한 뉴스를 실시간으로 감지해 가장 먼저 알려주는 실시간 정보 알림 플랫폼
+> 관심 종목·키워드의 뉴스를 실시간으로 수집하고, AI로 노이즈를 걸러 필요한 소식만 알려주는 알림 서비스
 
-![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin&logoColor=white)
+[![Test core-service](https://github.com/zeroway3/alpha-adopter/actions/workflows/test-core-service.yml/badge.svg)](https://github.com/zeroway3/alpha-adopter/actions/workflows/test-core-service.yml)
+[![Test frontend](https://github.com/zeroway3/alpha-adopter/actions/workflows/test-frontend.yml/badge.svg)](https://github.com/zeroway3/alpha-adopter/actions/workflows/test-frontend.yml)
+[![CodeQL](https://github.com/zeroway3/alpha-adopter/actions/workflows/codeql.yml/badge.svg)](https://github.com/zeroway3/alpha-adopter/actions/workflows/codeql.yml)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.4-7F52FF?logo=kotlin&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
-![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript&logoColor=white)
 
-> 이 프로젝트를 처음부터 끝까지 어떻게 진행했는지(실제로 겪은 문제와 해결 과정 포함)는
-> [`docs/project-story.md`](docs/project-story.md)에 정리돼 있습니다.
+설계 결정의 이유와 운영하며 찾고 고친 문제들은 [`docs/project-story.md`](docs/project-story.md)에 정리했습니다.
 
-## 왜 만드는가
+## 왜 만들었나
 
-정보가 넘치는 시대일수록, "내가 원하는 정보를 얼마나 빠르게 받아보는가"가 중요해지고 있습니다. AlphaAdopter는 사용자가 등록한 키워드/관심 종목과 관련된 뉴스가 발생하면, 노이즈를 걸러내고 실시간으로 알림을 전달하는 서비스입니다.
+키워드 문자열 매칭만으로 뉴스 알림을 보내면 노이즈가 많습니다. 실제로 수집한 "카카오" 기사 9건 중
+8건이 초콜릿 원료나 카카오TV 드라마 기사였습니다. AlphaAdopter는 빠르게 수집하는 것에 더해,
+**받을 가치가 있는 기사만, 빠짐없이, 한 번만** 전달하는 것을 목표로 합니다.
 
-## 핵심 기능
+## 주요 기능
 
-- 키워드/관심 종목 구독 등록·조회·삭제
-- 뉴스 소스 실시간 수집 (NAVER API HUB)
-- 구독 키워드 기반 매칭 + Claude(Haiku)를 이용한 AI 관련도 판단으로 노이즈 필터링. 구조화 출력(tool use)·프롬프트 인젝션 방어·Redis 캐싱·429 재시도·Micrometer 계측까지 갖춘 프로덕션 경화, 라벨링된 eval 데이터셋으로 precision/recall/F1을 실측하고 프롬프트를 개선하는 사이클까지 거침 ([실측 결과](docs/phase6-ai-relevance-filtering.md): 실제 수집 데이터 기준 노이즈 60% 감소, eval 20건 기준 정밀도·재현율·F1 78%→100% 개선)
-- Voyage AI 임베딩으로 같은 사건을 다룬 서로 다른 기사를 코사인 유사도로 감지해 중복 알림·중복 AI 호출 제거 ([설계 기록](docs/phase8-embedding-dedup.md))
-- 관련 뉴스 발생 시 실시간 알림 전달 (SSE + Redis Pub/Sub)
-- 비회원은 일일 다이제스트 이메일, 회원은 실시간 SSE로 차등 전달 (가입 시 기본 회원 처리라 현재는 사실상 전원 실시간 수신, 비회원 등급은 결제 연동 시 재도입 예정)
-- 알림 읽음/클릭 참여도 기반 개인화: 구독(키워드)별 과거 읽음 비율을 계산해(콜드스타트 시 판단 보류) 일일 다이제스트 발송 시 참여도가 높은 알림을 상단에 배치. 걸러내지 않고 순서만 바꾸는 fail-open 방식 ([설계 기록](docs/future-ideas.md))
-- 이메일+비밀번호 인증 (Spring Security + JWT, BCrypt 해시). access/refresh 토큰을 httpOnly + SameSite=Strict 쿠키로 전달해 SSE(EventSource)도 별도 처리 없이 쿠키로 인증됨
-- React + TypeScript 프론트엔드 (다크 테마, 사이드바/본문 레이아웃): 회원가입/로그인, 구독 관리, 실시간 알림 피드, 알림 히스토리
-- 관리자 화면: ADMIN role(DB, `User.role`)을 가진 계정으로 로그인하면 전체 사용자/구독/키워드 통계, 최근 7일 알림 추이, 최근 알림 목록을 볼 수 있음. `app.admin.emails`는 배포 시점에 해당 이메일 계정을 ADMIN으로 승격하는 부트스트랩 용도로만 쓰이고, 실제 인가는 Spring Security의 `hasRole("ADMIN")` 규칙이 게이트웨이 레벨에서 수행. 권한 변경은 `admin_audit_logs`에 기록되어 `GET /api/admin/audit-logs`로 조회 가능
-- 관리자용 사용자 이상탐지 에이전트: 단발성 tool use가 아니라 모델이 스스로 어떤 도구를 몇 번 호출할지 판단하는 멀티스텝 에이전트 루프(ReAct 패턴)로, 가입 직후 비정상적으로 빠른 다수 구독(NAVER API 할당량 위협)이나 알림을 전혀 안 읽는 비실사용 패턴을 조사해 위험도·근거·권장 조치를 보고함. 읽기 전용 도구만 제공하고 계정 조치는 직접 실행하지 않으며(사람이 최종 판단), 결론 없이 도구만 반복 호출하면 최대 반복 횟수에서 강제 종료해 INCONCLUSIVE로 떨어뜨림. 관리자 대시보드에서 사용자별로 "조사" 버튼 한 번으로 실행하고 결과·권한 변경 감사 로그를 바로 확인 가능. 정상/폭주 구독/비실사용/신규 콜드스타트 4가지 시나리오를 실제 DB에 시드해 에이전트가 맞게 판단하는지 측정하는 평가 하네스(`UserInvestigationEvalReport`)도 6단계 AI 필터의 eval 방식과 동일하게 갖춤
-- 의존성 취약점 스캔: PR이 새로 추가하는 의존성을 GitHub Advisory Database와 대조해 high 이상 심각도면 PR 체크를 실패시키는 `dependency-review` 워크플로와, 이미 들어와 있는 의존성에서 나중에 발견된 CVE를 매주 찾아 업데이트 PR을 올리는 Dependabot(Gradle/npm/GitHub Actions 전부 대상)을 함께 운영 — "새로 들어오는 것"과 "이미 있다가 나중에 터지는 것"을 서로 다른 메커니즘으로 커버. core-service(Gradle)는 의존성 버전 상당수가 Spring Boot BOM으로 관리돼 build.gradle.kts 정적 분석만으로는 실제 버전을 알 수 없어, Gradle을 실행해 해석된 그래프를 제출하는 `dependency-submission` 액션을 PR/main 양쪽에 붙여 보완 — 붙이자마자 내장 Tomcat의 critical CVE 3건(인가 우회·인증 재전송 우회)을 실제로 찾아내 패치함
-- 스키마 관리를 Flyway로 전환: Hibernate의 `ddl-auto`는 `validate`로만 쓰고, 실제 DDL은 `db/migration`의 SQL 파일이 명시적으로 담당. 베이스라인(`V1__baseline.sql`)은 운영과 동일한 Postgres 16에서 실제 생성된 스키마를 `pg_dump`로 뽑아 그대로 사용해 제약조건·인덱스 누락 위험을 없앰. `baseline-on-migrate`로 이미 이 스키마가 떠 있는 환경(기존 배포)과 빈 DB(신규 셋업·테스트)를 모두 안전하게 처리
-- 코드 자체 취약점 스캔(CodeQL): 의존성 스캔은 "가져다 쓰는 라이브러리"의 CVE만 잡고 우리가 직접 짠 코드의 인젝션·인증 우회 같은 결함은 못 잡는다는 공백을 메움. core-service(Kotlin→JVM)와 frontend(TypeScript) 둘 다 PR·main 푸시·매주 1회 스캔
+**수집과 정확도**
+- NAVER 뉴스 검색 API로 구독 키워드를 최신순 수집. 키워드별 수집 지점까지 페이지를 따라가 기사가 몰려도
+  빠지지 않게 하고, 누락 의심·호출 실패·발행 실패를 기록
+- Claude Haiku가 기사와 키워드의 관련도를 점수로 판정하는 2차 필터
+  (실제 알림 후보 30건 중 18건 제거, [결과](docs/phase6-ai-relevance-filtering.md))
+- Voyage AI 임베딩의 코사인 유사도로 같은 사건의 중복 보도를 하나로 묶음 ([설계](docs/phase8-embedding-dedup.md))
+- 직접 라벨링한 평가셋으로 정밀도·재현율을 측정하며 프롬프트 개선
 
-투자 조언·매매 시그널 등 자본시장법상 유사투자자문업으로 해석될 수 있는 기능은 스코프에서 명시적으로 제외합니다. 뉴스 원문 전체를 저장·재배포하지 않고 제목·요약·링크 위주로 다뤄 저작권 이슈를 피합니다. `ANTHROPIC_API_KEY`/`VOYAGE_API_KEY`가 없는 환경(예: 기여자 로컬)에서는 AI 필터/중복 제거가 각각 자동으로 비활성화되고 기존 문자열 매칭 결과를 그대로 신뢰합니다(fail-open).
+**전달**
+- Kafka → Redis Pub/Sub → SSE 실시간 알림 (여러 파드로 확장해도 사용자 연결을 가진 파드가 전달)
+- 일일 다이제스트 메일, 알림 읽음·클릭 기반 우선순위 정렬
+
+**운영과 안정성**
+- Redis 분산 락으로 여러 파드 중 한 곳에서만 스케줄 작업 실행 (다이제스트 메일 중복 발송 방지)
+- 원본 기사 link 유니크 저장으로 재수집·Kafka 재전달에도 한 건만 저장
+- AI·임베딩·rate limit은 장애 시 통과(fail-open), 되돌릴 수 없는 메일 발송은 장애 시 보류(fail-closed)
+- Prometheus·Grafana 지표, 관리자 화면의 수집 현황·이상 기록
+
+**보안**
+- JWT를 httpOnly + SameSite=Strict 쿠키로 전달, refresh token 교체·폐기
+- DB 기반 RBAC와 권한 변경 감사 로그, 로그인·가입·구독 API rate limit
+- Dependabot·dependency-review·CodeQL로 의존성과 코드 취약점 스캔
+  (운영 서버 내장 Tomcat critical CVE 3건 발견·패치)
+
+**AI 에이전트**
+- 관리자가 지목한 사용자의 가입·구독·알림 열람 데이터를 모델이 스스로 골라 조회해 이상 사용 여부를
+  위험도와 근거로 보고하는 조사 에이전트. 조회만 하고 조치는 사람이 결정하며, 최대 5회 반복 후 판단 불가로 종료
+
+투자 조언·매매 신호처럼 유사투자자문업으로 해석될 수 있는 기능은 제외했고, 뉴스 본문은 저장하지 않고
+제목·요약·링크만 다룹니다.
 
 ## 아키텍처
 
 ```
-[뉴스 소스 (NAVER API HUB)]
-        │
+[NAVER 뉴스 검색 API]
+        │  최신순 수집 + 수집 지점 추적 + 분산 락
         ▼
   [수집기] ──▶ Kafka(news.raw) ──▶ [MongoDB: 원본 저장]
                                           │
                                           ▼
-                              [매칭 엔진: Spring Boot + JPA]
-                    (구독 키워드 ↔ 뉴스, 문자열 매칭 + 임베딩 중복 제거(Voyage)
-                                + Claude 관련도 판단)
+                 [매칭: 문자열 매칭 → 임베딩 중복 제거 → Claude 관련도 판단]
                                           │
                                           ▼
-                              Kafka(news.matched)
+                       [PostgreSQL 저장] ──▶ Kafka(news.matched)
                                           │
                                           ▼
-                         [알림 서비스: SSE + Redis Pub/Sub]
+                   [알림: Redis Pub/Sub → SSE / 일일 다이제스트 메일]
                                           │
                                           ▼
-                              [React 클라이언트]
+                                 [React 클라이언트]
 ```
+
+AWS EKS 위에 core-service·Kafka(Strimzi)·MongoDB를, RDS(PostgreSQL)·ElastiCache(Redis)를 관리형으로 두고
+Terraform으로 관리합니다. GitHub Actions가 OIDC로 인증해 테스트 통과 후 배포합니다.
+
+## 실측 결과
+
+| 항목 | 결과 | 조건 |
+|---|---|---|
+| AI 관련도 필터 | 알림 대상 30건 → 12건 (60% 감소) | 실제 수집된 알림 후보 30건 |
+| 관련도 판정 | 정밀도 78% → 100%, 재현율 100% | 라벨링 평가셋 20건(튜닝 데이터와 동일, 확대 예정) |
+| API 부하테스트 | 12,278건 요청, 실패율 0%, p95 18ms, HPA 1→3 파드 | k6, t3.small ×4 ([결과](docs/phase5-load-test-observability.md)) |
 
 ## 기술 스택
 
-| 영역 | 선택 | 비고 |
-|---|---|---|
-| 언어/프레임워크(백엔드) | Kotlin + Spring Boot | |
-| ORM | JPA/Hibernate | |
-| 프론트엔드 | React 18 + TypeScript + Vite | 빌드 산출물을 `core-service`의 정적 리소스로 직접 서빙 |
-| 이벤트 스트리밍 | Kafka (EKS 위 Strimzi Operator) | |
-| 원본 저장 | MongoDB | 소스별 포맷이 달라 스키마 유연성 필요 |
-| 정본 저장 | PostgreSQL (AWS RDS) | HikariCP 풀 튜닝, 핫 컬럼 인덱싱 |
-| 캐시 | Redis (AWS ElastiCache) | SSE Pub/Sub 브로커 겸 관리자 통계 TTL 캐시 (Spring Cache) |
-| 배포 | AWS EKS (Helm, HPA) | Docker 멀티스테이지 빌드(프론트엔드+백엔드) |
-| IaC | Terraform | |
-| 관측성 | Prometheus, Grafana (Micrometer) | 분산 트레이싱(OpenTelemetry)은 현재 범위 밖 — 향후 과제 |
-| 부하테스트 | k6 | |
-| 인증 | Spring Security + JWT | Stateless API(서버 세션 저장 없음), access/refresh 토큰은 httpOnly 쿠키로 전달. 관리자 역할은 DB(`User.role`) 기반 RBAC로 판단하고 `hasRole("ADMIN")`으로 게이트웨이 레벨 인가 |
-| AI (관련도 판단) | Claude Haiku (Anthropic API) | 키워드 문자열 매칭 위에 얹는 2차 관련도 필터. tool use 구조화 출력, 프롬프트 인젝션 방어, Redis 캐싱, 429 재시도, Micrometer 계측. API 키 없으면 자동 비활성화 |
-| AI (중복 제거) | Voyage AI (voyage-4-lite) | 기사 임베딩 → 코사인 유사도로 같은 사건의 중복 보도 감지. API 키 없으면 자동 비활성화 |
-| 테스트 | Testcontainers(Kafka/Postgres/Mongo/Redis/Mailpit), vitest | 로컬 인프라 없이 CI에서 실제 컨테이너로 통합테스트 |
+| 영역 | 기술 |
+|---|---|
+| 백엔드 | Kotlin, Spring Boot 4, Spring Security, JPA, Flyway |
+| 메시징·저장소 | Kafka (Strimzi), PostgreSQL, MongoDB, Redis |
+| AI | Claude Haiku (tool use 구조화 출력), Voyage AI 임베딩 |
+| 프론트엔드 | React 19, TypeScript, Vite |
+| 인프라 | AWS EKS·RDS·ElastiCache, Terraform, Docker, GitHub Actions (OIDC) |
+| 관측·테스트 | Prometheus, Grafana, Micrometer, k6, Testcontainers, vitest |
 
 ## 프로젝트 구조
 
 ```
 alpha-adopter/
-├── docker-compose.yml          # 로컬 개발용 PostgreSQL·MongoDB·Kafka·Redis·Mailpit
-├── docs/                       # 검증 결과·설계 기록
-│   ├── project-story.md         # 프로젝트 전체 진행 과정 총정리
-│   ├── phase0-news-source-validation.md
-│   ├── phase5-load-test-observability.md
-│   ├── phase6-ai-relevance-filtering.md   # Claude 기반 관련도 필터: 구조화 출력·캐싱·재시도·계측·eval 튜닝
-│   ├── phase8-embedding-dedup.md          # Voyage 임베딩 기반 기사 중복 제거
-│   └── future-ideas.md
-├── infra/
-│   ├── terraform/               # AWS 인프라(VPC/RDS/ElastiCache/EKS/CI·CD용 IAM) IaC
-│   └── k8s/                     # core-service/Kafka(Strimzi)/MongoDB/모니터링 매니페스트
-├── loadtest/                    # k6 부하테스트 시나리오
-├── frontend/                    # React + TypeScript + Vite 프론트엔드
-│   └── src/
-│       ├── api/                 # 타입 안전 API 클라이언트 (백엔드 DTO와 1:1 대응)
-│       ├── auth/                # 세션 상태 관리 (AuthContext)
-│       ├── components/          # Sidebar, Logo 등 공용 컴포넌트
-│       ├── hooks/                # useNotificationStream (SSE 훅)
-│       ├── icons/                # 스트로크 기반 SVG 아이콘 세트
-│       ├── pages/                # AuthPage, UserDashboard, AdminDashboard
-│       └── styles/               # 다크 테마 전역 스타일
-└── core-service/                # 핵심 백엔드 서비스 (Kotlin + Spring Boot)
-    └── src/main
-        ├── kotlin/com/alphaadopter/core/
-        │   ├── domain/          # User, Subscription, NewsArticle, Notification
-        │   ├── collector/       # NAVER 뉴스 수집 (NaverNewsClient, 스케줄러)
-        │   ├── pipeline/        # Kafka 컨슈머, MongoDB 원본 저장, 매칭 엔진, 구독 캐시 기반 매칭
-        │   ├── ai/              # Claude 기반 관련도 판단(2차 노이즈 필터) + Voyage 임베딩 기반 중복 제거
-        │   │   └── agent/       # 멀티스텝 에이전트 루프(UserInvestigationAgent) — 관리자용 사용자 이상탐지 조사
-        │   ├── notification/    # 실시간 알림 전달(SSE + Redis Pub/Sub), 일일 다이제스트 이메일, 읽음/클릭 참여도 추적, 알림 히스토리 조회
-        │   ├── subscription/    # 구독 등록/조회/삭제 REST API, 메모리 구독 캐시 (SubscriptionCache)
-        │   ├── auth/            # 회원가입/로그인(JWT 발급), Spring Security 설정, JWT 인증 필터
-        │   ├── user/            # 관리자 승격 부트스트랩(AdminBootstrapRunner, 배포 환경변수 기반 idempotent grant)
-        │   ├── admin/           # 관리자 전용 통계/데이터 API (사용자·키워드·일별 추이·최근 알림, DB role 기반 접근 제어)
-        │   └── config/          # Kafka 토픽 등 설정
-        └── resources/
-            ├── db/migration/    # Flyway 마이그레이션(DDL은 전부 여기서만 관리, Hibernate는 validate만 함)
-            └── static/          # 빌드 산출물 전용 디렉터리 (git에는 커밋되지 않음, frontend/의 `npm run build`가 채움)
+├── core-service/               # 백엔드 (Kotlin + Spring Boot)
+│   └── src/main/kotlin/com/alphaadopter/core/
+│       ├── collector/          # 뉴스 수집 (수집 지점 추적, 재시도, 누락 감지)
+│       ├── pipeline/           # Kafka 컨슈머, 원본 저장, 매칭
+│       ├── ai/                 # 관련도 판단, 임베딩 중복 제거, agent/ 조사 에이전트
+│       ├── notification/       # SSE, Redis Pub/Sub, 일일 다이제스트
+│       ├── scheduling/         # 분산 스케줄 락
+│       ├── subscription/       # 구독 API, 구독 캐시
+│       ├── auth/               # JWT 쿠키 인증, rate limit, 보안 설정
+│       ├── admin/              # 관리자 통계·수집 현황·조사 API
+│       ├── personalization/    # 참여도 점수
+│       └── domain/             # 엔티티와 리포지토리
+├── frontend/                   # React + TypeScript + Vite
+├── infra/terraform/            # AWS 인프라 (VPC, EKS, RDS, ElastiCache, IAM)
+├── infra/k8s/                  # Kubernetes 매니페스트 (core-service, Kafka, MongoDB, 모니터링)
+├── loadtest/                   # k6 시나리오
+└── docs/                       # 설계·실측 기록
 ```
 
-## 로컬 개발 환경
+## 로컬 실행
 
 ```bash
-# 1. 로컬 PostgreSQL·MongoDB·Kafka·Redis·Mailpit 실행
+# 1. PostgreSQL·MongoDB·Kafka·Redis·Mailpit 실행
 docker compose up -d
 
-# 2. NAVER API HUB 인증정보 등록 (Client ID/Secret은 콘솔에서 발급)
-export NAVER_CLIENT_ID=발급받은_CLIENT_ID
-export NAVER_CLIENT_SECRET=발급받은_CLIENT_SECRET
+# 2. 환경변수 (NAVER는 수집에 필요, AI 키는 선택 — 없으면 해당 기능이 자동으로 꺼짐)
+export NAVER_CLIENT_ID=...
+export NAVER_CLIENT_SECRET=...
+export ANTHROPIC_API_KEY=...   # 선택: AI 관련도 필터
+export VOYAGE_API_KEY=...      # 선택: 임베딩 중복 제거
 
-# (선택) AI 관련도 필터를 쓰려면 Anthropic API 키 등록 — 없으면 자동 비활성화되고
-# 문자열 매칭 결과를 그대로 신뢰하므로 기여자 전원이 가질 필요는 없음
-export ANTHROPIC_API_KEY=발급받은_API_KEY
+# 3. 프론트엔드 빌드 (core-service 정적 리소스로 출력)
+cd frontend && npm install && npm run build
 
-# (선택) 임베딩 기반 기사 중복 제거를 쓰려면 Voyage AI 키 등록 — 없으면 자동 비활성화
-export VOYAGE_API_KEY=발급받은_API_KEY
-
-# 3. 프론트엔드 빌드 (core-service/src/main/resources/static/으로 직접 출력됨)
-cd frontend
-npm install
-npm run build      # 또는 npm run dev로 Vite 개발 서버(핫 리로드, /api·/actuator는 :8090으로 프록시)
-
-# 4. core-service 실행
-cd ../core-service
-./gradlew bootRun
+# 4. 백엔드 실행
+cd ../core-service && ./gradlew bootRun
 ```
 
-포트는 이 개발 환경에 이미 떠 있는 다른 프로젝트들과 겹치지 않도록 기본값 대신 아래 포트를 사용합니다.
+다른 로컬 서비스와 충돌하지 않도록 기본 포트 대신 아래 포트를 씁니다.
 
-| 서비스 | 기본 포트 대신 | 환경변수 |
+| 서비스 | 포트 | 환경변수 |
 |---|---|---|
 | PostgreSQL | 5434 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` |
 | MongoDB | 27018 | `MONGODB_URI` |
 | Kafka | 9095 | `KAFKA_BOOTSTRAP_SERVERS` |
 | Redis | 6380 | `REDIS_HOST`, `REDIS_PORT` |
-| Mailpit (SMTP/웹 UI) | 1025 / 8025 | `MAIL_HOST`, `MAIL_PORT` (다이제스트 이메일은 http://localhost:8025 에서 확인) |
+| Mailpit (SMTP / 웹) | 1025 / 8025 | `MAIL_HOST`, `MAIL_PORT` |
 | core-service | 8090 | `SERVER_PORT` |
 
-## 브랜치 전략
+테스트는 Testcontainers로 실제 컨테이너를 띄우므로 Docker만 있으면 됩니다.
 
-`main`은 항상 정상 동작하는 상태를 유지하고, 기능 단위로 `feature/*` 브랜치를 파서 PR로 병합합니다(GitHub Flow). `main`은 브랜치 보호가 걸려 있어 PR 없이 직접 push할 수 없습니다.
+```bash
+cd core-service && ./gradlew test
+cd frontend && npm test
+```
 
-## 로드맵
+## 개발 방식
 
-- [x] 0단계 — 뉴스 데이터 소스 검증, MVP 스코프 확정 ([검증 결과](docs/phase0-news-source-validation.md))
-- [x] 1단계 — 핵심 도메인 설계 (Spring Boot + JPA, 로컬 PostgreSQL) — User/Subscription/NewsArticle/Notification 엔티티 설계 완료
-- [x] 2단계 — 뉴스 수집 파이프라인 (Kafka + MongoDB + 매칭 엔진) — 스케줄러 수집 → news.raw → MongoDB 원본 저장 → 구독 매칭 → news.matched 발행까지 구현
-- [x] 3단계 — 실시간 알림 전달 (SSE + Redis) — news.matched 컨슈머 → Redis Pub/Sub → 인스턴스별 SSE 커넥션으로 전달, 하트비트로 유휴 커넥션 방지
-- [x] 4단계 — AWS 인프라 전환 (RDS, ElastiCache, EKS, Terraform) — VPC/RDS/ElastiCache/EKS Terraform으로 구성, core-service+Kafka(Strimzi)+MongoDB를 EKS에 배포, HPA 적용, GitHub Actions(OIDC) CI/CD로 자동 배포
-- [x] 5단계 — 실측 부하테스트 및 관측성 구축 — Prometheus+Grafana(kube-prometheus-stack)로 관측성 구축, k6로 구독 API 부하테스트 실시 ([결과](docs/phase5-load-test-observability.md))
-- [x] 6단계 — 인증 + AI 기반 관련도 판단 — 이메일+비밀번호 JWT 인증 도입, Claude Haiku로 문자열 매칭 위 2차 노이즈 필터링, 실제 수집 데이터로 노이즈 60% 감소 실측 ([결과](docs/phase6-ai-relevance-filtering.md))
-- [x] 7단계 — 프론트엔드 React 전환 + 백엔드 성능 개선 — 바닐라 JS 프론트엔드를 다크 테마 재설계 거쳐 React 18+TypeScript+Vite로 전면 재작성, Docker 멀티스테이지 빌드로 CI/CD 통합, SSE 인증/플러시 버그 2건 수정. 다른 실무 프로젝트와 비교 조사해 백엔드 N+1 쿼리 2건·트랜잭션 스코프·누락 인덱스 6개·커넥션 풀 미설정 수정
-- [x] 8단계 — AI 관련도 필터 프로덕션 경화 + 임베딩 기반 중복 제거 — tool use 구조화 출력·프롬프트 인젝션 방어·Redis 캐싱·429 재시도·Micrometer 계측으로 6단계 AI 필터를 프로덕션 수준으로 경화. 라벨링된 eval 데이터셋으로 precision/recall/F1을 실측(78%→100%)하며 프롬프트를 개선하는 사이클 수행. Voyage AI 임베딩 코사인 유사도로 같은 사건의 중복 보도를 감지해 중복 알림·중복 AI 호출 제거 ([결과](docs/phase8-embedding-dedup.md))
-- [x] 9단계 — 참여도 기반 개인화 필터링 — 구독(키워드)별 읽음/전달 이력으로 참여도 점수(0.0~1.0)를 계산(`PersonalizationScorer`), 표본 부족 시 콜드스타트로 판단 보류. 일일 다이제스트가 이 점수로 알림을 정렬해 참여도 높은 항목을 상단에 배치 — 걸러내지 않고 순서만 바꾸는 fail-open 원칙 유지 ([설계 기록](docs/future-ideas.md))
-
-전체 진행 과정과 각 단계에서 실제로 겪은 문제·해결 방법은 [`docs/project-story.md`](docs/project-story.md)에 상세히 정리돼 있습니다.
-
+`main`은 브랜치 보호가 걸려 있어 기능별 브랜치에서 PR로만 병합합니다. PR마다 백엔드·프론트엔드 테스트,
+의존성 취약점 검사, CodeQL 스캔이 돌고, main에 병합되면 EKS로 배포됩니다.

@@ -126,6 +126,7 @@ alpha-adopter/
 docker compose up -d
 
 # 2. 환경변수 (NAVER는 수집에 필요, AI 키는 선택 — 없으면 해당 기능이 자동으로 꺼짐)
+export JWT_SECRET=$(openssl rand -base64 32)   # 필수: 토큰 서명 키, 없으면 기동 실패
 export NAVER_CLIENT_ID=...
 export NAVER_CLIENT_SECRET=...
 export ANTHROPIC_API_KEY=...   # 선택: AI 관련도 필터

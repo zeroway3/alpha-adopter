@@ -16,8 +16,15 @@ class JwtService(
     // RefreshTokenService로 재발급받으므로 탈취 시 노출 시간을 짧게 유지할 수 있다.
     @Value("\${app.jwt.access-validity-minutes:60}") accessValidityMinutes: Long,
 ) {
-    // HS256은 최소 256비트(32바이트) 키가 필요 — 로컬 기본값도 그 길이를 맞춰둔다 (application.yml 참고)
-    private val key: SecretKey = Keys.hmacShaKeyFor(secret.toByteArray(Charsets.UTF_8))
+    // HS256은 최소 256비트(32바이트) 키가 필요하다. 설정이 빠졌을 때 조용히 약한 키나 공개된 기본 키로
+    // 동작하지 않도록, 값이 없거나 짧으면 기동 자체를 실패시킨다(application.yml 참고).
+    private val key: SecretKey = run {
+        val bytes = secret.toByteArray(Charsets.UTF_8)
+        require(bytes.size >= MIN_SECRET_BYTES) {
+            "JWT_SECRET 환경변수가 없거나 너무 짧습니다(${bytes.size}바이트). 32바이트 이상의 무작위 값을 설정하세요."
+        }
+        Keys.hmacShaKeyFor(bytes)
+    }
     private val validity: Duration = Duration.ofMinutes(accessValidityMinutes)
 
     fun generate(userId: Long, email: String, role: UserRole): String {
@@ -39,4 +46,8 @@ class JwtService(
         val role = (claims["role"] as? String)?.let { runCatching { UserRole.valueOf(it) }.getOrNull() } ?: UserRole.USER
         AuthPrincipal(userId = claims.subject.toLong(), email = claims["email"] as String, role = role)
     }.getOrNull()
+
+    companion object {
+        const val MIN_SECRET_BYTES = 32
+    }
 }

@@ -35,6 +35,9 @@ abstract class IntegrationTestBase {
         val mailpit: GenericContainer<*> =
             GenericContainer(DockerImageName.parse("axllent/mailpit:latest")).withExposedPorts(1025, 8025).apply { start() }
 
+        private val testJwtSecret: String =
+            java.util.Base64.getEncoder().encodeToString(ByteArray(32).also { java.security.SecureRandom().nextBytes(it) })
+
         @DynamicPropertySource
         @JvmStatic
         fun registerProperties(registry: DynamicPropertyRegistry) {
@@ -49,6 +52,8 @@ abstract class IntegrationTestBase {
             registry.add("spring.data.redis.port") { redis.getMappedPort(6379) }
             registry.add("spring.mail.host", mailpit::getHost)
             registry.add("spring.mail.port") { mailpit.getMappedPort(1025) }
+            // 기본값이 없는 JWT 서명 키를 테스트 실행마다 무작위로 만든다
+            registry.add("app.jwt.secret") { testJwtSecret }
         }
     }
 }

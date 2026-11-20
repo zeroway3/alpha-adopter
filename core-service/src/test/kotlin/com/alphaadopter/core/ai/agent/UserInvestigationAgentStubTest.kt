@@ -49,6 +49,40 @@ class UserInvestigationAgentStubTest {
     }
 
     @Test
+    fun `요청 본문에 쓰지 않는 블록 필드를 null로 싣지 않는다`() {
+        // 실제 API는 text 블록의 "id": null 같은 여분 필드를 400으로 거부한다. 스텁은 이걸 모르기 때문에
+        // 요청 본문을 직접 검사해야 한다(실제 API 평가에서 처음 드러난 버그의 회귀 테스트).
+        val bodies = mutableListOf<String>()
+        val builder = RestClient.builder()
+        val server = MockRestServiceServer.bindTo(builder).build()
+        listOf(
+            """{"content":[{"type":"tool_use","id":"call_1","name":"get_subscription_activity","input":{}}],"usage":{"input_tokens":1,"output_tokens":1}}""",
+            """{"content":[{"type":"tool_use","id":"call_2","name":"report_verdict","input":{"riskLevel":"LOW","reasoning":"정상","recommendedAction":"없음"}}],"usage":{"input_tokens":1,"output_tokens":1}}""",
+        ).forEach { body ->
+            server.expect(requestTo("https://api.anthropic.com/v1/messages"))
+                .andExpect { request -> bodies += (request as org.springframework.mock.http.client.MockClientHttpRequest).bodyAsString }
+                .andRespond(withSuccess(body, MediaType.APPLICATION_JSON))
+        }
+        val agent = UserInvestigationAgent(
+            builder,
+            toolExecutor = stubExecutor(),
+            meterRegistry = SimpleMeterRegistry(),
+            apiKey = "fake-key-for-test",
+            model = "claude-haiku-4-5-20251001",
+            maxIterations = 5,
+            maxRetries = 3,
+            retryInitialDelayMs = 1,
+        )
+
+        agent.investigate(userId = 1L)
+
+        assertEquals(2, bodies.size)
+        bodies.forEach { body -> assertTrue(!body.contains(":null"), "null 필드가 직렬화됨: $body") }
+        // 두 번째 요청에는 모델의 tool_use 블록과 우리의 tool_result 블록이 함께 실려야 한다
+        assertTrue(bodies[1].contains("\"tool_use_id\":\"call_1\""))
+    }
+
+    @Test
     fun `도구를 한 번 호출한 뒤 report_verdict로 끝나면 2번 왕복하고 결론을 반환한다`() {
         val agent = agentWithStubbedResponses(
             // 1번째 왕복: 모델이 구독 활동을 조사하겠다고 판단

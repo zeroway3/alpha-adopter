@@ -6,6 +6,7 @@ import com.alphaadopter.core.domain.notification.NotificationRepository
 import com.alphaadopter.core.domain.notification.NotificationStatus
 import com.alphaadopter.core.domain.subscription.SubscriptionRepository
 import com.alphaadopter.core.domain.user.UserRepository
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.time.Duration
 
@@ -64,6 +65,8 @@ class InvestigationToolExecutor(
     private val userRepository: UserRepository,
     private val subscriptionRepository: SubscriptionRepository,
     private val notificationRepository: NotificationRepository,
+    // PersonalizationScorer와 같은 기준: 전달 알림이 이보다 적으면 참여도 비율은 우연에 가깝다
+    @Value("\${app.personalization.min-sample-size:5}") private val minSampleSize: Long,
 ) {
     fun execute(toolName: String, userId: Long): String = when (toolName) {
         "get_user_profile" -> getUserProfile(userId)
@@ -85,12 +88,22 @@ class InvestigationToolExecutor(
         val sorted = subscriptions.sortedBy { it.createdAt }
         val span = Duration.between(sorted.first().createdAt, sorted.last().createdAt)
         val keywords = sorted.joinToString(", ") { it.keyword }
+        // "최초~최근 간격"만 주면, 오래된 계정이 오늘 몇 초 만에 구독을 몰아 만든 경우 간격이 30일로 나와
+        // 폭주가 가려진다(실제 평가에서 이 시나리오를 3번 모두 놓쳤다). 모델이 볼 수 없는 패턴은 판단할 수
+        // 없으므로, 최근 24시간 신규 구독과 60초 안에 몰린 최대 구독 수를 함께 준다.
+        val latest = sorted.last().createdAt
+        val recent24h = sorted.count { Duration.between(it.createdAt, latest) <= Duration.ofHours(24) }
+        val maxInOneMinute = sorted.indices.maxOf { i ->
+            sorted.drop(i).takeWhile { Duration.between(sorted[i].createdAt, it.createdAt) <= Duration.ofSeconds(60) }.size
+        }
 
         return """
             구독 수: ${subscriptions.size}
             최초 구독: ${sorted.first().createdAt}
             최근 구독: ${sorted.last().createdAt}
             최초~최근 구독 간격: ${span.seconds}초
+            가장 최근 구독 기준 24시간 안에 만든 구독: ${recent24h}개
+            60초 안에 몰린 최대 구독 수: ${maxInOneMinute}개
             <data>
             키워드 목록: $keywords
             </data>
@@ -108,6 +121,13 @@ class InvestigationToolExecutor(
         val readRate = (read.toDouble() / sent.toDouble() * 100).toInt()
         val clickRate = (clicked.toDouble() / sent.toDouble() * 100).toInt()
 
-        return "전달된 알림: ${sent}건\n읽음: ${read}건 (${readRate}%)\n클릭: ${clicked}건 (${clickRate}%)"
+        val stats = "전달된 알림: ${sent}건\n읽음: ${read}건 (${readRate}%)\n클릭: ${clicked}건 (${clickRate}%)"
+        // 실제 평가에서 알림 3건을 안 읽은 7일차 사용자를 "비실사용"으로 의심하는 오탐이 반복됐다.
+        // 표본이 적다는 사실을 도구 결과에 명시해, 모델이 비율만 보고 단정하지 않게 한다.
+        if (sent < minSampleSize) {
+            return "$stats\n표본 부족: 전달 알림이 ${sent}건으로 기준(${minSampleSize}건) 미만이라, 이 비율만으로는 " +
+                "실사용 여부를 판단할 수 없다(참여도는 판단 근거에서 제외할 것)."
+        }
+        return stats
     }
 }

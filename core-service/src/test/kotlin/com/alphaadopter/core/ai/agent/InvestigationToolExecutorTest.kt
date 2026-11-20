@@ -64,6 +64,27 @@ class InvestigationToolExecutorTest : IntegrationTestBase() {
 
     @Test
     @Transactional
+    fun `get_subscription_activity는 오래된 계정의 최근 폭주를 전체 간격에 가려지지 않게 드러낸다`() {
+        val user = newUser()
+        val now = java.time.Instant.now()
+        subscriptionRepository.save(
+            Subscription(user = user, keyword = "삼성전자", type = SubscriptionType.KEYWORD).apply { createdAt = now.minus(java.time.Duration.ofDays(30)) },
+        )
+        listOf("SK하이닉스", "현대차", "카카오", "네이버", "기아").forEachIndexed { i, keyword ->
+            subscriptionRepository.save(
+                Subscription(user = user, keyword = keyword, type = SubscriptionType.KEYWORD).apply { createdAt = now.plusSeconds(i * 2L) },
+            )
+        }
+
+        val result = executor.execute("get_subscription_activity", user.id!!)
+
+        // 전체 간격은 30일이지만, 최근 24시간 5개·60초 안 5개가 따로 보여야 한다
+        assertTrue(result.contains("24시간 안에 만든 구독: 5개"), result)
+        assertTrue(result.contains("60초 안에 몰린 최대 구독 수: 5개"), result)
+    }
+
+    @Test
+    @Transactional
     fun `get_subscription_activity는 키워드를 데이터 델리미터로 감싸 프롬프트 인젝션을 방어한다`() {
         val user = newUser()
         // 키워드 자체에 지시문처럼 보이는 문구를 넣어도 평문 데이터로만 다뤄지는지 확인
@@ -115,5 +136,7 @@ class InvestigationToolExecutorTest : IntegrationTestBase() {
         assertTrue(result.contains("전달된 알림: 4건"))
         assertTrue(result.contains("읽음: 2건 (50%)"))
         assertTrue(result.contains("클릭: 1건 (25%)"))
+        // 4건은 표본 기준(5건) 미만이라, 비율만으로 판단하지 말라는 안내가 함께 붙어야 한다
+        assertTrue(result.contains("표본 부족"))
     }
 }

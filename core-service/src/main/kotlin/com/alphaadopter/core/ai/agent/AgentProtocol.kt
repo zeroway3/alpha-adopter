@@ -2,6 +2,7 @@ package com.alphaadopter.core.ai.agent
 
 import com.alphaadopter.core.ai.ClaudeTool
 import com.alphaadopter.core.ai.ClaudeUsage
+import com.fasterxml.jackson.annotation.JsonInclude
 import tools.jackson.databind.JsonNode
 
 // ClaudeRelevanceClient의 ClaudeMessage/ClaudeMessagesRequest는 tool_choice로 도구 호출 하나를
@@ -11,6 +12,11 @@ import tools.jackson.databind.JsonNode
 
 // type별로 쓰는 필드가 다르다: text→text, tool_use(모델→나)→id/name/input,
 // tool_result(나→모델)→tool_use_id/content.
+//
+// 한 클래스로 세 블록을 표현하므로, 쓰지 않는 필드를 null로 그대로 보내면 API가 거부한다(text 블록에
+// "id": null이 실리면 "Extra inputs are not permitted" 400). 스텁 테스트는 응답만 흉내 내고 요청 본문을
+// 검증하지 않아, 실제 API로 평가를 돌리고서야 드러났다. null 필드는 직렬화하지 않는다.
+@JsonInclude(JsonInclude.Include.NON_NULL)
 data class AgentContentBlock(
     val type: String,
     val text: String? = null,

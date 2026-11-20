@@ -24,7 +24,7 @@ class NewsDeduplicationService(
     private val embeddingClient: VoyageEmbeddingClient,
     private val redisTemplate: StringRedisTemplate,
     private val meterRegistry: MeterRegistry,
-    @Value("\${app.ai.dedup-similarity-threshold:0.90}") private val similarityThreshold: Double,
+    @Value("\${app.ai.dedup-similarity-threshold:0.85}") private val similarityThreshold: Double,
     @Value("\${app.ai.dedup-window-hours:48}") private val windowHours: Long,
     @Value("\${app.ai.dedup-max-candidates:200}") private val maxCandidates: Long,
 ) {

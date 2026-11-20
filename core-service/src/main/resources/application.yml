@@ -128,8 +128,10 @@ app:
     embedding-model: ${AI_EMBEDDING_MODEL:voyage-4-lite}
     embedding-max-retries: ${AI_EMBEDDING_MAX_RETRIES:3}
     embedding-retry-initial-delay-ms: ${AI_EMBEDDING_RETRY_INITIAL_DELAY_MS:500}
-    # 코사인 유사도가 이 값 이상이면 같은 사건을 다룬 중복 기사로 판단한다
-    dedup-similarity-threshold: ${AI_DEDUP_SIMILARITY_THRESHOLD:0.90}
+    # 코사인 유사도가 이 값 이상이면 같은 사건을 다룬 중복 기사로 판단한다. 처음 정한 0.90은 실제 기사
+    # 쌍을 사람이 라벨링해 보니 묶은 쌍의 93%가 맞았지만 같은 사건의 약 90%를 놓치고 있었다. 0.85에서도
+    # 묶은 쌍의 97%가 같은 사건이라 낮췄다(docs/evaluation/news-dedup.md). 더 낮은 구간은 표본이 적어 보류
+    dedup-similarity-threshold: ${AI_DEDUP_SIMILARITY_THRESHOLD:0.85}
     # 이 시간(시간 단위) 안에 들어온 기사끼리만 중복 비교 대상으로 삼는다 — 오래된 기사와는
     # 우연히 문구가 비슷해도 별개 사건일 가능성이 높다
     dedup-window-hours: ${AI_DEDUP_WINDOW_HOURS:48}

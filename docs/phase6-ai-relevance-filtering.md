@@ -93,6 +93,10 @@ Claude Haiku로 재판단해서, "기존 방식 vs AI 필터 적용" 결과를 �
 
 ### 프롬프트 개선 및 재측정
 
+> **2026-11-20 추가**: 아래 100%는 오탐 패턴을 찾는 데 쓴 같은 20건으로 다시 잰 값이라 실제 성능이 아니다.
+> 튜닝에 쓰지 않은 검증용 실제 기사 80건으로 다시 잰 결과는 정밀도 71%, 재현율 63%다
+> ([evaluation/relevance-filter.md](evaluation/relevance-filter.md)).
+
 "낮은 점수를 줘야 하는 경우 / 높은 점수를 줘야 하는 경우"를 명시적 기준으로 나눠
 프롬프트에 추가했다(`ClaudeRelevanceClient.buildPrompt`). 위 두 가지 오탐 패턴을
 콕 집어 예시로 넣었다.

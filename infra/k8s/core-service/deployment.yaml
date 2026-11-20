@@ -106,8 +106,15 @@ metadata:
   namespace: alphaadopter
   labels:
     app: core-service
+  # 기본(Classic ELB)은 클라이언트 IP를 넘겨주지 않아, IP 기준 rate limit이 모든 사용자를 로드밸런서
+  # 주소 몇 개로 뭉쳐 세거나, 위조 가능한 X-Forwarded-For에 기대야 했다. NLB + externalTrafficPolicy:
+  # Local은 실제 클라이언트 IP를 연결 주소 그대로 전달하므로 헤더를 신뢰하지 않아도 된다
+  # (app.rate-limit.trusted-proxy-hops=0, RateLimitFilter 참고).
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
 spec:
   type: LoadBalancer
+  externalTrafficPolicy: Local
   selector:
     app: core-service
   ports:

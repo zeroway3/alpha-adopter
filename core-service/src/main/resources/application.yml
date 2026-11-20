@@ -156,6 +156,9 @@ app:
     # 회원가입/로그인/구독 생성 API의 IP 기준 고정 윈도우 rate limit (RateLimitFilter 참고).
     # Redis 장애 시에는 요청을 막지 않는다(fail-open).
     enabled: ${RATE_LIMIT_ENABLED:true}
+    # 클라이언트 IP를 X-Forwarded-For에서 읽을 때 신뢰할 프록시 단계 수. 0이면 헤더를 무시하고 연결
+    # 주소를 쓴다(헤더는 클라이언트가 위조할 수 있다). ALB처럼 헤더를 덧붙이는 프록시 뒤라면 그 단계 수.
+    trusted-proxy-hops: ${RATE_LIMIT_TRUSTED_PROXY_HOPS:0}
     auth:
       limit: ${RATE_LIMIT_AUTH_LIMIT:10}
       window-seconds: ${RATE_LIMIT_AUTH_WINDOW_SECONDS:60}

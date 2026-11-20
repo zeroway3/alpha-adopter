@@ -53,13 +53,13 @@ variable "kubernetes_version" {
 }
 
 variable "node_instance_type" {
-  description = "워커 노드 EC2 인스턴스 타입 (프리티어 계정이라 free-tier-eligible 타입만 사용 가능)"
+  description = "워커 노드 EC2 인스턴스 타입. 무료 플랜 계정은 free-tier-eligible 타입만 쓸 수 있다(t3.medium 불가). t3.small(2GB) 4대에서 Kafka·MongoDB·모니터링을 함께 띄우다 노드가 메모리 부족으로 NotReady에 빠진 적이 있어, 같은 비용대에서 메모리가 가장 큰 m7i-flex.large(8GB)로 바꿨다"
   type        = string
-  default     = "t3.small"
+  default     = "m7i-flex.large"
 }
 
 variable "node_desired_size" {
-  description = "워커 노드 기본 개수 (실측 부하테스트에서 t3.small 2대로는 Kafka+Mongo+core-service를 동시에 감당 못해 메모리 압박이 발생함을 확인, 3대로 조정. 이후 관측성 스택(Prometheus+Grafana) 추가로 메모리 여유가 더 필요해져 4대로 조정)"
+  description = "워커 노드 기본 개수. 노드 장애 시 다른 노드로 재배치되는지 검증할 수 있도록 2대(총 16GB)"
   type        = number
-  default     = 4
+  default     = 2
 }

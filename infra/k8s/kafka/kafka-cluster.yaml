@@ -11,6 +11,17 @@ spec:
   roles:
     - controller
     - broker
+  # 요청·한도가 없으면 브로커 JVM이 노드 메모리를 예측 불가하게 쓰고, 스케줄러도 이를 모른 채 다른
+  # 파드를 같은 노드에 몰아넣는다. 힙은 컨테이너 한도의 절반 정도로 두고 나머지는 페이지 캐시에 남긴다.
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      memory: 1536Mi
+  jvmOptions:
+    -Xms: 512m
+    -Xmx: 768m
   storage:
     type: jbod
     volumes:
@@ -30,7 +41,8 @@ metadata:
 spec:
   kafka:
     # strimzi.io/install/latest(최신 오퍼레이터)가 3.x를 더 이상 지원하지 않아
-    # (Unsupported Kafka.spec.kafka.version 에러로 실제로 확인) 지원 버전 중 최신으로 고정
+    # (Unsupported Kafka.spec.kafka.version 에러로 실제로 확인) 지원 버전 중 최신으로 고정.
+    # 같은 일이 반복되지 않도록 오퍼레이터 버전도 infra/scripts/cluster-up.sh에서 고정한다.
     version: 4.3.2
     metadataVersion: 4.3-IV0
     listeners:
@@ -45,5 +57,17 @@ spec:
       default.replication.factor: 1
       min.insync.replicas: 1
   entityOperator:
-    topicOperator: {}
-    userOperator: {}
+    topicOperator:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          memory: 384Mi
+    userOperator:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          memory: 384Mi

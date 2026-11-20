@@ -11,6 +11,10 @@ metadata:
   namespace: alphaadopter
 spec:
   replicas: 1
+  # RWO 볼륨을 쓰는 단일 레플리카라, 기본 RollingUpdate면 새 파드가 이전 파드가 잡은 볼륨을 못 붙여
+  # 멈춘다(Grafana에서 실제로 겪은 것과 같은 문제). 이전 파드를 먼저 내린다.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: mongodb
@@ -22,8 +26,19 @@ spec:
       containers:
         - name: mongodb
           image: mongo:7
+          # WiredTiger 캐시는 기본으로 (메모리-1GB)의 절반을 잡는데, 컨테이너 한도와 무관하게 커질 수
+          # 있어 명시한다. 원본 저장(landing zone) 용도라 작은 캐시로 충분하다.
+          args: ["--wiredTigerCacheSizeGB", "0.25"]
           ports:
             - containerPort: 27017
+          # 예전엔 요청·한도가 없어 스케줄러가 노드 메모리를 실제보다 많이 배정했고, 노드 하나가
+          # 메모리 부족으로 NotReady에 빠지는 장애로 이어졌다(project-story 12절).
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              memory: 768Mi
           volumeMounts:
             - name: data
               mountPath: /data/db

@@ -51,6 +51,9 @@ class NewsCollectorTest {
         pageSize = pageSize,
         maxPages = maxPages,
         publishTimeoutMs = 1000,
+        initialBackfillMinutes = 60,
+        // 기사 시각을 base 기준 "몇 분 전"으로 만들므로 시계도 base에 고정한다
+        clock = java.time.Clock.fixed(base, java.time.ZoneOffset.UTC),
     )
 
     init {
@@ -104,6 +107,17 @@ class NewsCollectorTest {
         assertEquals(1, result.fetchedPages)
         assertFalse(result.gapDetected)
         Mockito.verify(naverNewsClient, Mockito.times(1)).searchNews(anyString(), anyInt(), anyInt())
+    }
+
+    @Test
+    fun `첫 수집은 최근 1시간 안의 기사만 알림으로 보내고 수집 지점은 가장 최신 기사로 잡는다`() {
+        // 구독 직후 몇 시간 전 기사가 한꺼번에 쏟아지지 않아야 한다(AWS 실측에서 약 1,300건이 몰린 문제)
+        givenPage(1, page(10, 90, 300))
+
+        collector.collect("삼성전자")
+
+        assertEquals(listOf("기사10"), published.map { it.title })
+        assertEquals("https://n.news.naver.com/10", savedCheckpoints.single().second)
     }
 
     @Test

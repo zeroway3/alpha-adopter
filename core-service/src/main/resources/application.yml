@@ -55,6 +55,11 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
       properties:
         spring.json.trusted.packages: "com.alphaadopter.core.*"
+    listener:
+      # 토픽 파티션 수(3)만큼 컨슈머 스레드를 둔다. 기사 1건 처리 시간의 대부분이 Claude 판단(평균 0.74초)
+      # 대기라 CPU는 놀고 있는데, 스레드가 하나면 파티션 3개를 순서대로 처리해 초당 1.2건에서 막혔다
+      # (AWS 처리량 측정). CPU 기준 HPA는 I/O 대기로 막힌 상황을 보지 못해 파드를 늘리지 않는다.
+      concurrency: ${KAFKA_LISTENER_CONCURRENCY:3}
 
 server:
   port: ${SERVER_PORT:8090}

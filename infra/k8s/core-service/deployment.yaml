@@ -13,6 +13,8 @@ spec:
       labels:
         app: core-service
     spec:
+      # preStop 대기(20초) + 진행 중 요청 마무리 시간을 합친 것보다 길게
+      terminationGracePeriodSeconds: 45
       containers:
         - name: core-service
           image: 548088753563.dkr.ecr.ap-northeast-2.amazonaws.com/alphaadopter/core-service:latest
@@ -73,6 +75,13 @@ spec:
                   name: core-service-secrets
                   key: VOYAGE_API_KEY
                   optional: true
+          # 파드가 내려갈 때 NLB가 대상에서 빼기 전에 앱이 먼저 종료되면, 그 사이 들어온 요청이 실패한다
+          # (노드 장애 훈련 뒤 HPA 축소 때 503이 실제로 관측됨). 종료 신호 전에 잠시 기다려 NLB 등록 해제가
+          # 먼저 끝나게 하고, 이후 Spring의 graceful shutdown이 진행 중인 요청을 마무리한다.
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 20
           # 예전엔 프로브가 없어 컨테이너가 뜨자마자(기동 25초 전) 트래픽을 받고, 멈춰도 재시작되지
           # 않았다. 기동은 startupProbe가 기다리고, 이후 준비 상태·생존 여부를 각각 확인한다.
           startupProbe:

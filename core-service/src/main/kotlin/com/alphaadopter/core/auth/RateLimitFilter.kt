@@ -28,6 +28,9 @@ class RateLimitFilter(
     @Value("\${app.rate-limit.auth.window-seconds:60}") private val authWindowSeconds: Long,
     @Value("\${app.rate-limit.subscription.limit:30}") private val subscriptionLimit: Long,
     @Value("\${app.rate-limit.subscription.window-seconds:60}") private val subscriptionWindowSeconds: Long,
+    // 앞단에 X-Forwarded-For를 덧붙이는 신뢰할 수 있는 프록시가 몇 단계 있는지. 0이면 헤더를 무시하고
+    // 연결 주소(remoteAddr)만 쓴다. ALB 뒤라면 1(ALB가 맨 오른쪽에 실제 클라이언트 IP를 덧붙인다).
+    @Value("\${app.rate-limit.trusted-proxy-hops:0}") private val trustedProxyHops: Int,
 ) : OncePerRequestFilter() {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -77,13 +80,18 @@ class RateLimitFilter(
         return count <= limit
     }
 
-    // EKS 배포 환경에서는 ALB를 거치므로 실제 클라이언트 IP는 X-Forwarded-For 첫 번째 값이다.
-    // 로컬/직결 환경(헤더 없음)에서는 remoteAddr을 그대로 사용한다.
-    private fun clientIp(request: HttpServletRequest): String {
-        val forwarded = request.getHeader("X-Forwarded-For")
-        if (!forwarded.isNullOrBlank()) {
-            return forwarded.split(",").first().trim()
+    private fun clientIp(request: HttpServletRequest): String =
+        resolveClientIp(request.remoteAddr, request.getHeader("X-Forwarded-For"), trustedProxyHops)
+
+    companion object {
+        // 예전엔 X-Forwarded-For의 첫 번째 값을 무조건 클라이언트 IP로 썼다. 이 값은 클라이언트가 마음대로
+        // 넣을 수 있어서, 요청마다 다른 값을 보내면 IP 기준 rate limit을 그대로 우회할 수 있었다(로그인
+        // 무차별 대입 방어 무력화). 신뢰할 수 있는 건 우리 프록시가 덧붙인 오른쪽 끝 값들뿐이므로, 설정된
+        // 프록시 단계 수만큼 오른쪽에서 센 값을 쓰고, 프록시가 없으면(0) 헤더를 아예 보지 않는다.
+        fun resolveClientIp(remoteAddr: String, forwardedFor: String?, trustedProxyHops: Int): String {
+            if (trustedProxyHops <= 0 || forwardedFor.isNullOrBlank()) return remoteAddr
+            val hops = forwardedFor.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            return hops.getOrNull(hops.size - trustedProxyHops) ?: remoteAddr
         }
-        return request.remoteAddr
     }
 }

@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Component
 import org.springframework.web.util.HtmlUtils
+import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
@@ -44,6 +46,9 @@ class NewsCollector(
     @Value("\${app.collector.page-size:100}") private val pageSize: Int,
     @Value("\${app.collector.max-pages:3}") private val maxPages: Int,
     @Value("\${app.collector.publish-timeout-ms:10000}") private val publishTimeoutMs: Long,
+    // 처음 수집하는 키워드는 이 시간 안에 게시된 기사만 알림으로 보낸다(아래 첫 수집 처리 참고)
+    @Value("\${app.collector.initial-backfill-minutes:60}") private val initialBackfillMinutes: Long,
+    private val clock: Clock = Clock.systemUTC(),
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -95,9 +100,20 @@ class NewsCollector(
             )
         }
 
+        // 첫 수집(수집 지점 없음)은 검색 결과 첫 페이지 전체(최대 100건)가 "새 기사"로 잡힌다. 예전엔 이걸 전부
+        // 알림으로 보내, 키워드 10개를 처음 구독하자 과거 기사 약 1,300건이 한꺼번에 몰려 처리가 20분 가까이
+        // 밀렸다(AWS 실측). 사용자 입장에서도 구독 직후 몇 시간 전 기사가 쏟아지는 건 잘못된 동작이라, 첫
+        // 수집은 최근 기사만 보내고 나머지는 수집 지점을 잡는 데만 쓴다.
+        val toPublish = if (checkpoint == null) {
+            val cutoff = clock.instant().minus(Duration.ofMinutes(initialBackfillMinutes))
+            fresh.filter { item -> parsePubDate(item.pubDate)?.isAfter(cutoff) ?: false }
+        } else {
+            fresh
+        }
+
         // 오래된 기사부터 발행해, 하류에서도 실제 발생 순서에 가깝게 처리되도록 한다
-        val collectedAt = Instant.now()
-        val messages = fresh.asReversed().map { toMessage(keyword, it, collectedAt) }
+        val collectedAt = clock.instant()
+        val messages = toPublish.asReversed().map { toMessage(keyword, it, collectedAt) }
         val futures = messages.map { kafkaTemplate.send(newsRawTopic, it.link, it) }
         val failedPublishes = futures.count { future ->
             runCatching { future.get(publishTimeoutMs, TimeUnit.MILLISECONDS) }.isFailure
@@ -133,7 +149,7 @@ class NewsCollector(
         val checkpoint = current ?: CollectorCheckpoint(keyword = keyword, lastPublishedAt = publishedAt, lastLink = item.link)
         checkpoint.lastPublishedAt = publishedAt
         checkpoint.lastLink = item.link
-        checkpoint.updatedAt = Instant.now()
+        checkpoint.updatedAt = clock.instant()
         checkpointRepository.save(checkpoint)
     }
 
